@@ -151,12 +151,12 @@ gcloud builds triggers create github \
 **手動で流す**:
 
 ```sh
-PROJECT_ID=your-project ./deploy/cloudrun.sh
+gcloud builds submit --project your-project --config cloudbuild.yaml
 ```
 
-このスクリプトは `gcloud builds submit` を呼ぶだけの薄いラッパで、対象プロジェクトを
-目視確認させるためにある。`PROJECT_ID` は必ず明示する。gcloud のアクティブな
-プロジェクトへは意図的にフォールバックしない（別用途のプロジェクトへの誤デプロイを防ぐため）。
+`--project` は必ず書く。省くと gcloud のアクティブな設定が使われるため、
+別用途のプロジェクトへ出してしまう余地が残る。リージョンやサービス名を変えるときは
+`--substitutions=_REGION=...,_SERVICE=...` を足す（既定値は `cloudbuild.yaml` にある）。
 
 既定では Vertex AI をサービスアカウントの資格情報で使うため、API キーも
 Secret Manager も要らない。初回に必要な API 有効化・Artifact Registry の作成・

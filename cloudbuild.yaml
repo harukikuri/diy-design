@@ -1,8 +1,7 @@
 # Cloud Build から Cloud Run へデプロイする。
 #
 # 手動:
-#   gcloud builds submit --config cloudbuild.yaml \
-#     --substitutions=_REGION=asia-northeast1
+#   gcloud builds submit --project YOUR_PROJECT --config cloudbuild.yaml
 #
 # 自動 (GitHub push で走らせる):
 #   gcloud builds triggers create github \
