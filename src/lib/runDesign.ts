@@ -1,5 +1,9 @@
 import { streamDesign } from "../api/client.ts";
-import type { AgentTraceEntry, DesignRequestBody } from "../api/types.ts";
+import type {
+  AgentTraceEntry,
+  DesignRequestBody,
+  DesignResponseBody,
+} from "../api/types.ts";
 import { createStock } from "../core/materials.ts";
 import type { CompiledDesign } from "../core/pipeline.ts";
 import { compileDesign, overallScore } from "../core/pipeline.ts";
@@ -19,11 +23,14 @@ export interface DesignRun {
   evaluated: number;
 }
 
-export async function runDesign(
+/**
+ * エージェントの判断を、決定論エンジンに通して展開する。
+ * 保存から読み直すときも同じ経路を通るので、結果は完全に一致する。
+ */
+export function expandResponse(
   body: DesignRequestBody,
-  onTrace: (entry: AgentTraceEntry) => void = () => {},
-): Promise<DesignRun> {
-  const response = await streamDesign(body, onTrace);
+  response: DesignResponseBody,
+): DesignRun {
   const ownedStock = body.stock.map((s) =>
     createStock(s.materialId, s.length, s.quantity, true),
   );
@@ -42,4 +49,12 @@ export async function runDesign(
     trace: response.trace,
     evaluated: response.evaluated,
   };
+}
+
+export async function runDesign(
+  body: DesignRequestBody,
+  onTrace: (entry: AgentTraceEntry) => void = () => {},
+): Promise<{ run: DesignRun; response: DesignResponseBody }> {
+  const response = await streamDesign(body, onTrace);
+  return { run: expandResponse(body, response), response };
 }

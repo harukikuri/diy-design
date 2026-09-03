@@ -1,7 +1,8 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { requestHealth, requestRender } from "../api/client.ts";
 import { describeDesign } from "../lib/describeDesign.ts";
 import type { CompiledDesign } from "../core/pipeline.ts";
+import { ROLE_COLOR, ROLE_LABEL } from "./partColors.ts";
 import { Viewer3D } from "./Viewer3D.tsx";
 
 /**
@@ -23,6 +24,15 @@ export function CompletionImage({ design }: Props) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [aiEnabled, setAiEnabled] = useState<boolean | null>(null);
+  const [exploded, setExploded] = useState(0);
+
+  // rail_x と rail_z のように、色は違うが呼び名が同じ役割はまとめて1つ出す
+  const legend = useMemo(
+    () => [
+      ...new Map(design.model.parts.map((p) => [ROLE_LABEL[p.role], ROLE_COLOR[p.role]])),
+    ],
+    [design.model.parts],
+  );
 
   useEffect(() => {
     requestHealth()
@@ -62,14 +72,37 @@ export function CompletionImage({ design }: Props) {
       <div className="render__pane">
         <div className="render__head">
           <h3>設計の形状</h3>
-          <span className="eyebrow">reference</span>
+          <label className="render__explode">
+            分解表示
+            <input
+              type="range"
+              min={0}
+              max={1}
+              step={0.02}
+              value={exploded}
+              onChange={(e) => setExploded(Number(e.target.value))}
+            />
+          </label>
         </div>
         <div className="render__body">
-          <Viewer3D model={design.model} onCaptureReady={onCaptureReady} />
+          <Viewer3D
+            model={design.model}
+            exploded={exploded}
+            onCaptureReady={onCaptureReady}
+          />
         </div>
         <div className="render__foot">
-          <p className="field__hint">
+          <div className="legend">
+            {legend.map(([label, color]) => (
+              <span className="legend__item" key={label}>
+                <span className="legend__swatch" style={{ background: color }} />
+                {label}
+              </span>
+            ))}
+          </div>
+          <p className="field__hint" style={{ marginTop: 10 }}>
             この 3D をそのまま参照画像として渡すので、段数と比率は設計と一致します。
+            ドラッグで回せます。
           </p>
         </div>
       </div>

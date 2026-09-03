@@ -175,61 +175,219 @@ select {
 }
 
 /* --------------------------------------------------------------------------
- * レイアウト
+ * 骨格 — 左に保存した設計、右に本文
  * -------------------------------------------------------------------------- */
 
-.masthead {
-  background: var(--surface);
-  border-bottom: 1px solid var(--line);
+.shell {
+  display: grid;
+  grid-template-columns: 272px minmax(0, 1fr);
+  height: 100%;
 }
 
-.masthead__inner {
+.side {
   display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 4px 18px;
-  padding: 12px 24px;
+  flex-direction: column;
+  min-height: 0;
+  padding: 12px;
+  background: var(--paper);
+  border-right: 1px solid var(--line);
 }
 
-/* 右端に寄せる。ページ上で唯一の主要動作。
-   .btn--primary の width:100% が後方に定義されているので詳細度で上回る。 */
-.btn.masthead__action {
-  width: auto;
-  margin-left: auto;
-  padding: 9px 20px;
+.side__head {
+  padding: 10px 8px 18px;
 }
 
-.masthead__title {
-  font-size: clamp(19px, 1.8vw, 24px);
+.side__brand {
+  font-size: 18px;
   font-weight: 900;
-  line-height: 1.1;
+  line-height: 1.25;
   letter-spacing: -0.03em;
 }
 
-.masthead__title span {
+.side__brand span {
   color: var(--teal);
 }
 
-.masthead__tagline {
-  color: var(--ink-2);
-  font-size: 12px;
-  letter-spacing: 0.01em;
+.side__create {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 11px 12px;
+  background: var(--surface);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--r-md);
+  font-size: 13px;
+  font-weight: 700;
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 0.12s, background 0.12s, color 0.12s;
 }
 
-.layout {
-  max-width: 1280px;
+.side__create:hover:not(:disabled) {
+  border-color: var(--teal);
+  color: var(--teal-deep);
+}
+
+.side__create:disabled {
+  color: var(--ink-3);
+  cursor: not-allowed;
+}
+
+.side__create[aria-current="true"] {
+  background: var(--teal);
+  border-color: var(--teal);
+  color: #fff;
+}
+
+.side__create-mark {
+  display: grid;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: var(--surface-sunk);
+  font-size: 14px;
+  line-height: 1;
+  color: var(--ink-2);
+}
+
+.side__create[aria-current="true"] .side__create-mark {
+  background: rgb(255 255 255 / 22%);
+  color: #fff;
+}
+
+.side__list {
+  flex: 1;
+  min-height: 0;
+  margin-top: 14px;
+  overflow-y: auto;
+}
+
+.side__empty {
+  padding: 14px 10px;
+  color: var(--ink-3);
+  font-size: 12px;
+  line-height: 1.9;
+}
+
+.side__item {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 26px;
+  align-items: center;
+  border-radius: var(--r-md);
+  transition: background 0.12s;
+}
+
+.side__item:hover {
+  background: var(--surface);
+}
+
+.side__item--active {
+  background: var(--surface);
+  box-shadow: inset 0 0 0 1px var(--line);
+}
+
+.side__open {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+  padding: 9px 4px 9px 11px;
+  background: transparent;
+  border: none;
+  text-align: left;
+  cursor: pointer;
+}
+
+.side__title {
+  overflow: hidden;
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1.4;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.side__item--active .side__title {
+  font-weight: 700;
+}
+
+.side__meta {
+  display: flex;
+  gap: 8px;
+  font-size: 11px;
+  color: var(--ink-3);
+}
+
+.side__delete {
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  background: transparent;
+  border: none;
+  border-radius: var(--r-sm);
+  color: var(--ink-3);
+  font-size: 15px;
+  line-height: 1;
+  opacity: 0;
+  cursor: pointer;
+  transition: opacity 0.12s, color 0.12s;
+}
+
+.side__item:hover .side__delete,
+.side__delete:focus-visible {
+  opacity: 1;
+}
+
+.side__delete:hover {
+  color: var(--danger);
+}
+
+.main {
+  min-width: 0;
+  overflow-y: auto;
+}
+
+.main__inner {
+  max-width: 1180px;
   margin: 0 auto;
-  padding: 24px;
+  padding: 26px 28px 60px;
+}
+
+/* 新規作成のときは入力を本文の中央に置く */
+.main__compose {
+  max-width: 860px;
+  margin: 0 auto;
+  padding: 48px 28px 60px;
 }
 
 @media (max-width: 900px) {
-  .layout {
-    padding: 16px;
+  .shell {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: auto minmax(0, 1fr);
   }
-}
 
-.stage {
-  min-width: 0;
+  .side {
+    border-right: none;
+    border-bottom: 1px solid var(--line);
+  }
+
+  .side__list {
+    display: flex;
+    gap: 8px;
+    margin-top: 10px;
+    overflow-x: auto;
+  }
+
+  .side__item {
+    flex: none;
+    width: 200px;
+  }
+
+  .main__inner,
+  .main__compose {
+    padding: 18px 16px 40px;
+  }
 }
 
 /* --------------------------------------------------------------------------
@@ -1364,8 +1522,21 @@ select {
 
 .render__body {
   position: relative;
-  aspect-ratio: 1 / 1;
+  aspect-ratio: 4 / 3;
   background: var(--viewport);
+}
+
+.render__explode {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  color: var(--ink-2);
+}
+
+.render__explode input[type="range"] {
+  width: 110px;
+  accent-color: var(--teal);
 }
 
 .render__body img {
@@ -1523,100 +1694,6 @@ select {
 
 
 /* --------------------------------------------------------------------------
- * 入力シート (モーダル)
- *
- * ネイティブの dialog を使う。Esc で閉じる・フォーカスが外へ出ない・
- * 背面が不活性になる、をブラウザ側の実装に任せられる。
- * -------------------------------------------------------------------------- */
-
-.sheet {
-  width: min(80vw, 1040px);
-  max-height: 80vh;
-  padding: 0;
-  overflow: visible;
-  background: transparent;
-  border: none;
-}
-
-@media (max-width: 720px) {
-  .sheet {
-    width: calc(100vw - 24px);
-    max-height: 88vh;
-  }
-}
-
-.sheet::backdrop {
-  background: rgb(18 24 26 / 55%);
-  backdrop-filter: blur(3px);
-}
-
-.sheet[open] {
-  animation: sheet-in 0.24s cubic-bezier(0.2, 0.7, 0.3, 1);
-}
-
-.sheet[open]::backdrop {
-  animation: fade-in 0.24s ease-out;
-}
-
-@keyframes sheet-in {
-  from {
-    opacity: 0;
-    transform: translateY(10px) scale(0.985);
-  }
-  to {
-    opacity: 1;
-    transform: none;
-  }
-}
-
-@keyframes fade-in {
-  from {
-    opacity: 0;
-  }
-  to {
-    opacity: 1;
-  }
-}
-
-.sheet__body {
-  position: relative;
-  border-radius: var(--r-md);
-  box-shadow: 0 24px 60px -20px rgb(10 16 18 / 45%);
-}
-
-/* シート内ではパネルの枠と影を重ねない */
-.sheet__body > .panel {
-  display: flex;
-  flex-direction: column;
-  border: none;
-  border-radius: var(--r-md);
-  box-shadow: none;
-}
-
-.sheet__close {
-  position: absolute;
-  top: 10px;
-  right: 12px;
-  z-index: 1;
-  width: 30px;
-  height: 30px;
-  padding: 0;
-  background: transparent;
-  border: 1px solid transparent;
-  border-radius: var(--r-sm);
-  color: var(--ink-3);
-  font-size: 19px;
-  line-height: 1;
-  cursor: pointer;
-  transition: color 0.12s, border-color 0.12s;
-}
-
-.sheet__close:hover {
-  border-color: var(--line);
-  color: var(--ink);
-}
-
-/* --------------------------------------------------------------------------
  * 段階入力 (ステッパー)
  * -------------------------------------------------------------------------- */
 
@@ -1703,7 +1780,7 @@ select {
 
 .wizard__body {
   /* 実測した中身の高さ (--pane-h) に padding を足す。上限は画面の 80% を超えない範囲。 */
-  height: min(calc(var(--pane-h, 320px) + 56px), calc(80vh - 150px));
+  height: calc(var(--pane-h, 320px) + 56px);
   overflow-y: auto;
   padding: 28px 26px;
   transition: height 0.3s cubic-bezier(0.2, 0.7, 0.3, 1);
