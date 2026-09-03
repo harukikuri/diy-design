@@ -1,10 +1,7 @@
-import { useLayoutEffect, useMemo, useRef, useState } from "react";
+import { useLayoutEffect, useRef, useState } from "react";
 import type { ChangeEvent, KeyboardEvent } from "react";
 import { DEFAULT_KERF } from "../core/cutplan.ts";
 import { MATERIALS, getMaterial } from "../core/materials.ts";
-import { getStructure } from "../core/structures/index.ts";
-import { validateDimensions } from "../core/validator.ts";
-import { Elevation } from "./Elevation.tsx";
 import { Scale, STANDARD_SPAN } from "./Scale.tsx";
 
 export interface StockInput {
@@ -111,23 +108,6 @@ export function InputForm({ value, onChange, onSubmit, busy }: Props) {
   const sizeOk = value.width > 0 && value.height > 0 && value.depth > 0;
   const isLast = step === STEPS.length - 1;
 
-  /**
-   * 寸法の見え方を確かめるための下絵。
-   * 4本支柱型を既定値でコンパイルして、比率だけを見せる。
-   * 決定論エンジンなので 1 件 0.13ms、入力のたびに引き直しても負担にならない。
-   */
-  const preview = useMemo(() => {
-    const compiler = getStructure("four_post_shelf");
-    const dims = { width: value.width, height: value.height, depth: value.depth };
-    if (validateDimensions(compiler, dims).length > 0) return null;
-    return compiler.compile({
-      dimensions: dims,
-      params: compiler.defaultParams(dims),
-      frame: getMaterial("lumber_2x4"),
-      panel: getMaterial("board_ply18"),
-    });
-  }, [value.width, value.height, value.depth]);
-
   // 途中の段で Enter を押しても送信せず、次へ進める
   const onKeyDown = (e: KeyboardEvent<HTMLFormElement>) => {
     if (e.key !== "Enter" || isLast) return;
@@ -197,47 +177,30 @@ export function InputForm({ value, onChange, onSubmit, busy }: Props) {
         )}
 
         {step === 1 && (
-          <section className="wizard__pane wizard__pane--split" ref={pane}>
-            <div>
-              <h2 className="wizard__title">仕上がり寸法</h2>
-              <p className="wizard__lede">
-                完成したときの外形です。目盛りは木材の定尺 1820mm を表します。
-              </p>
-              {dimensions.map((dim) => (
-                <div className="dim" key={dim.key}>
-                  <div className="dim__row">
-                    <span className="dim__name">{dim.label}</span>
-                    <input
-                      className="input input--num"
-                      type="number"
-                      min={0}
-                      step={10}
-                      value={dim.value}
-                      onChange={numberHandler(dim.key)}
-                      aria-label={`${dim.label} (mm)`}
-                    />
-                  </div>
-                  <div className="dim__scale">
-                    <Scale span={STANDARD_SPAN} value={dim.value} minor={100} major={500} />
-                  </div>
+          <section className="wizard__pane" ref={pane}>
+            <h2 className="wizard__title">仕上がり寸法</h2>
+            <p className="wizard__lede">
+              完成したときの外形です。目盛りは木材の定尺 1820mm を表します。
+            </p>
+            {dimensions.map((dim) => (
+              <div className="dim" key={dim.key}>
+                <div className="dim__row">
+                  <span className="dim__name">{dim.label}</span>
+                  <input
+                    className="input input--num"
+                    type="number"
+                    min={0}
+                    step={10}
+                    value={dim.value}
+                    onChange={numberHandler(dim.key)}
+                    aria-label={`${dim.label} (mm)`}
+                  />
                 </div>
-              ))}
-            </div>
-
-            <figure className="wizard__preview">
-              <div className="wizard__preview-figure">
-                {preview ? (
-                  <Elevation parts={preview.parts} bounds={preview.bounds} view="front" />
-                ) : (
-                  <p className="wizard__preview-empty">
-                    この寸法で作れる構造がありません
-                  </p>
-                )}
+                <div className="dim__scale">
+                  <Scale span={STANDARD_SPAN} value={dim.value} minor={100} major={500} />
+                </div>
               </div>
-              <figcaption>
-                比率の確認用。構造と段数はこのあとエージェントが決めます。
-              </figcaption>
-            </figure>
+            ))}
           </section>
         )}
 
