@@ -4,6 +4,8 @@ WORKDIR /app
 COPY package.json package-lock.json ./
 RUN npm ci
 COPY . .
+# テストを通らないイメージは作らせない
+RUN npm test
 RUN npm run build
 
 FROM node:22-slim

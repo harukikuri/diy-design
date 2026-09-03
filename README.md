@@ -135,23 +135,32 @@ npm start                   # ビルド済みを 1 プロセスで配信
 
 ## デプロイ
 
+ビルドとデプロイの手順は [`cloudbuild.yaml`](./cloudbuild.yaml) にある。
+イメージは `npm test` を通らないと作られないため、テストが落ちたコードはデプロイされない。
+
+**GitHub push で自動デプロイ**（推奨）:
+
+```sh
+gcloud builds triggers create github \
+  --name=deploy-main \
+  --repo-owner=harukikuri --repo-name=diy-design \
+  --branch-pattern='^main$' \
+  --build-config=cloudbuild.yaml
+```
+
+**手動で流す**:
+
 ```sh
 PROJECT_ID=your-project ./deploy/cloudrun.sh
 ```
 
-`PROJECT_ID` は必ず明示する。gcloud のアクティブなプロジェクトへは
-意図的にフォールバックしない（別用途のプロジェクトへの誤デプロイを防ぐため）。
-デプロイ前に対象プロジェクトとアカウントを表示して確認を取る。
+このスクリプトは `gcloud builds submit` を呼ぶだけの薄いラッパで、対象プロジェクトを
+目視確認させるためにある。`PROJECT_ID` は必ず明示する。gcloud のアクティブな
+プロジェクトへは意図的にフォールバックしない（別用途のプロジェクトへの誤デプロイを防ぐため）。
 
-gcloud の構成を分けている場合は、グローバルの active を切り替えずに実行できる:
-
-```sh
-CLOUDSDK_ACTIVE_CONFIG_NAME=diy-personal PROJECT_ID=your-project ./deploy/cloudrun.sh
-```
-
-既定では Vertex AI を使うため、API キーも Secret Manager も要らない。
-初回に必要な API 有効化とサービスアカウントへの `roles/aiplatform.user` 付与は
-[`deploy/cloudrun.sh`](./deploy/cloudrun.sh) の先頭コメントにある。
+既定では Vertex AI をサービスアカウントの資格情報で使うため、API キーも
+Secret Manager も要らない。初回に必要な API 有効化・Artifact Registry の作成・
+`roles/aiplatform.user` の付与は [`cloudbuild.yaml`](./cloudbuild.yaml) の先頭コメントにある。
 
 ## パイプライン
 
