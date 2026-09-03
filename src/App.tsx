@@ -6,6 +6,7 @@ import { runPipeline } from "./core/pipeline.ts";
 import type { FormState } from "./components/InputForm.tsx";
 import { InputForm, initialForm } from "./components/InputForm.tsx";
 import { CandidateGrid } from "./components/CandidateGrid.tsx";
+import { DesignDetail } from "./components/DesignDetail.tsx";
 import { Scale, STANDARD_SPAN } from "./components/Scale.tsx";
 
 export default function App() {
@@ -98,9 +99,7 @@ export default function App() {
                   <div className="section-head">
                     <h2>{selected.candidate.title}</h2>
                   </div>
-                  <div className="panel">
-                    <p className="empty">詳細は準備中</p>
-                  </div>
+                  <DesignDetail design={selected} />
                 </section>
               )}
             </>
