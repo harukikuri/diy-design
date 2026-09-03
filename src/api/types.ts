@@ -58,8 +58,10 @@ export interface RenderResponseBody {
 
 export interface HealthResponse {
   ok: boolean;
-  /** Gemini API キーが設定され、エージェントと画像生成が使えるか */
+  /** エージェントと画像生成が使えるか */
   ai: boolean;
+  /** Gemini へのつなぎ方 */
+  backend: "vertex" | "api-key" | "none";
   agentModel: string;
   imageModel: string;
 }

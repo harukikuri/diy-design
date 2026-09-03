@@ -2,6 +2,7 @@ import { createHash } from "node:crypto";
 import { GoogleGenAI } from "@google/genai";
 import type { RenderResponseBody } from "../src/api/types.ts";
 import type { ServerConfig } from "./config.ts";
+import { genAiOptions } from "./config.ts";
 
 /**
  * 完成イメージの生成 (Nano Banana)。
@@ -80,7 +81,7 @@ export async function renderCompletionImage(
   }
   blocks.push({ type: "text", text: prompt });
 
-  const ai = new GoogleGenAI({ apiKey: config.geminiApiKey });
+  const ai = new GoogleGenAI(genAiOptions(config));
   const interaction = await ai.interactions.create({
     model: config.imageModel,
     input: blocks,

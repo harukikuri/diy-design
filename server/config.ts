@@ -1,18 +1,30 @@
 /**
  * サーバ設定。
  *
- * API キーが無い環境でもアプリが動くことを前提にする。
- * キー未設定なら Design Engine はルールベース実装にフォールバックし、
- * 画像生成は無効になる (§フォールバック)。
+ * Gemini へのつなぎ方は 2 通りある。
+ *
+ * - vertex   : Vertex AI。認証は実行環境の資格情報 (Cloud Run のサービスアカウント、
+ *              ローカルでは application-default login)。鍵を持ち回らずに済み、
+ *              レート上限もプロジェクト単位で広い。本番はこちら。
+ * - api-key  : AI Studio の API キー。手軽だが無料枠は 20 リクエスト/分/モデルで、
+ *              1 回の設計に 4〜8 リクエスト使うためデモには足りない。
+ *
+ * どちらも用意できないときはルールベースの設計エンジンにフォールバックする。
  */
+
+export type AiBackend = "vertex" | "api-key" | "none";
 
 export interface ServerConfig {
   port: number;
-  /** Gemini API キー。未設定ならルールベースにフォールバックする。 */
+  backend: AiBackend;
+  /** api-key モードのときだけ使う */
   geminiApiKey: string | undefined;
+  /** vertex モードのときだけ使う */
+  gcpProject: string | undefined;
+  gcpLocation: string;
   /** エージェントの推論に使うモデル */
   agentModel: string;
-  /** agentModel が高負荷などで使えないときに順に試すモデル */
+  /** agentModel が使えないときに順に試すモデル */
   fallbackModels: string[];
   /** 一時エラー時に同じモデルで試す回数 */
   retries: number;
@@ -24,12 +36,29 @@ export interface ServerConfig {
   staticDir: string;
 }
 
+function resolveBackend(apiKey?: string, project?: string): AiBackend {
+  // 明示指定が最優先。指定が無ければ、使えるものを選ぶ (Vertex を優先)。
+  const explicit = process.env.AI_BACKEND?.trim();
+  if (explicit === "vertex") return project ? "vertex" : "none";
+  if (explicit === "api-key") return apiKey ? "api-key" : "none";
+  if (project) return "vertex";
+  if (apiKey) return "api-key";
+  return "none";
+}
+
 export function loadConfig(): ServerConfig {
+  const geminiApiKey = process.env.GEMINI_API_KEY?.trim() || undefined;
+  const gcpProject = process.env.GOOGLE_CLOUD_PROJECT?.trim() || undefined;
+
   return {
     port: Number(process.env.PORT ?? 8080),
-    geminiApiKey: process.env.GEMINI_API_KEY?.trim() || undefined,
-    agentModel: process.env.AGENT_MODEL ?? "gemini-3.8-flash",
-    fallbackModels: (process.env.FALLBACK_MODELS ?? "gemini-3.7-flash,gemini-3.5-flash")
+    backend: resolveBackend(geminiApiKey, gcpProject),
+    geminiApiKey,
+    gcpProject,
+    // 新しいモデルはリージョン限定のことがあるため、既定は global エンドポイント
+    gcpLocation: process.env.GOOGLE_CLOUD_LOCATION?.trim() || "global",
+    agentModel: process.env.AGENT_MODEL ?? "gemini-3.5-flash",
+    fallbackModels: (process.env.FALLBACK_MODELS ?? "gemini-3.7-flash,gemini-3.6-flash")
       .split(",")
       .map((m) => m.trim())
       .filter(Boolean),
@@ -40,5 +69,22 @@ export function loadConfig(): ServerConfig {
   };
 }
 
-export const isAiEnabled = (config: ServerConfig): boolean =>
-  config.geminiApiKey !== undefined;
+export const isAiEnabled = (config: ServerConfig): boolean => config.backend !== "none";
+
+/**
+ * ADK はモデル呼び出しの直前に環境変数を読む。Vertex を使う場合はここで立てておく。
+ * (ADK 2.x は GOOGLE_GENAI_USE_ENTERPRISE を見る。GOOGLE_GENAI_USE_VERTEXAI は非推奨。)
+ */
+export function applyBackendEnv(config: ServerConfig): void {
+  if (config.backend !== "vertex") return;
+  process.env.GOOGLE_GENAI_USE_ENTERPRISE = "true";
+  process.env.GOOGLE_CLOUD_PROJECT = config.gcpProject!;
+  process.env.GOOGLE_CLOUD_LOCATION = config.gcpLocation;
+}
+
+/** 画像生成クライアントに渡す接続設定。 */
+export function genAiOptions(config: ServerConfig) {
+  return config.backend === "vertex"
+    ? { vertexai: true, project: config.gcpProject, location: config.gcpLocation }
+    : { apiKey: config.geminiApiKey };
+}

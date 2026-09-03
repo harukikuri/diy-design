@@ -58,8 +58,17 @@ AI にすべてを任せない（要件定義書 §4.1）。
 | --- | --- | --- |
 | Compute | **Cloud Run** | フロントエンドとエージェント API を1サービスで配信 |
 | AI | **Agent Development Kit (TypeScript)** | 設計エージェントとツール定義 |
-| AI | **Gemini API** (`gemini-3.8-flash`) | エージェントの推論 |
+| AI | **Vertex AI** (Gemini 3.x Flash) | エージェントの推論 |
 | AI | **Nano Banana** (`gemini-3.1-flash-image`) | 完成イメージの生成 |
+
+Gemini へのつなぎ方は 2 通りあり、環境変数で切り替わる。
+
+- **Vertex AI**（既定・推奨）— 鍵を持たず、実行環境の資格情報で認証する。
+  Cloud Run ではサービスアカウント、ローカルでは `gcloud auth application-default login`。
+- **AI Studio の API キー** — 手軽だが無料枠は **20 リクエスト/分/モデル**。
+  1 回の設計で 4〜8 リクエスト使うため、デモ用途には足りない。
+
+どちらも用意できない場合はルールベースの設計エンジンにフォールバックする。
 
 完成イメージは文章からではなく、**3D ビューのスナップショットを参照画像として**
 生成する。文章だけだと段数や比率が設計とずれるため。
@@ -79,7 +88,7 @@ flowchart TB
     API --> AG
   end
 
-  AG <-->|推論| GEM[Gemini API<br/>gemini-3.8-flash]
+  AG <-->|推論| GEM[Vertex AI<br/>Gemini 3.x Flash]
   API -->|完成イメージ| NB[Nano Banana<br/>gemini-3.1-flash-image]
 
   subgraph TOOLS["エージェントの道具（決定論エンジン）"]
@@ -107,7 +116,11 @@ flowchart TB
 
 ```sh
 npm install
-cp .env.example .env        # GEMINI_API_KEY を入れる
+cp .env.example .env
+
+# Vertex AI を使う場合 (推奨)
+gcloud auth application-default login
+#   .env の GOOGLE_CLOUD_PROJECT に個人プロジェクトの ID を入れる
 
 npm run dev:server          # API (:8080)
 npm run dev                 # フロントエンド (:5173, /api は上へプロキシ)
@@ -117,8 +130,8 @@ npm run build               # 型チェック + フロント + サーバのビ�
 npm start                   # ビルド済みを 1 プロセスで配信
 ```
 
-`GEMINI_API_KEY` が無くてもアプリは動く。その場合は設計がルールベースの
-エンジンに落ち、完成イメージの生成は無効になる。CI とオフライン開発のため。
+資格情報が無くてもアプリは動く。その場合は設計がルールベースのエンジンに落ち、
+完成イメージの生成は無効になる。CI とオフライン開発のため。
 
 ## デプロイ
 
@@ -136,7 +149,8 @@ gcloud の構成を分けている場合は、グローバルの active を切�
 CLOUDSDK_ACTIVE_CONFIG_NAME=diy-personal PROJECT_ID=your-project ./deploy/cloudrun.sh
 ```
 
-初回に必要な API 有効化と Secret Manager の準備は
+既定では Vertex AI を使うため、API キーも Secret Manager も要らない。
+初回に必要な API 有効化とサービスアカウントへの `roles/aiplatform.user` 付与は
 [`deploy/cloudrun.sh`](./deploy/cloudrun.sh) の先頭コメントにある。
 
 ## パイプライン

@@ -1,10 +1,12 @@
 import express from "express";
 import { existsSync } from "node:fs";
 import { resolve } from "node:path";
-import { isAiEnabled, loadConfig } from "./config.ts";
+import { applyBackendEnv, isAiEnabled, loadConfig } from "./config.ts";
 import { registerRoutes } from "./routes.ts";
 
 const config = loadConfig();
+applyBackendEnv(config);
+
 const app = express();
 
 app.use(express.json({ limit: "4mb" }));
@@ -13,6 +15,7 @@ app.get("/api/health", (_req, res) => {
   res.json({
     ok: true,
     ai: isAiEnabled(config),
+    backend: config.backend,
     agentModel: config.agentModel,
     imageModel: config.imageModel,
   });
@@ -31,6 +34,11 @@ if (existsSync(staticDir)) {
 
 app.listen(config.port, () => {
   console.log(
-    `DIY Design Compiler listening on :${config.port} (AI ${isAiEnabled(config) ? "有効" : "無効 — ルールベースにフォールバック"})`,
+    `DIY Design Compiler listening on :${config.port} ` +
+      (config.backend === "vertex"
+        ? `(Vertex AI / ${config.gcpProject} / ${config.gcpLocation})`
+        : config.backend === "api-key"
+          ? "(AI Studio API キー)"
+          : "(AI 無効 — ルールベースにフォールバック)"),
   );
 });
