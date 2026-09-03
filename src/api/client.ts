@@ -1,5 +1,6 @@
 import type {
   DesignRequestBody,
+  HealthResponse,
   DesignResponseBody,
   RenderRequestBody,
   RenderResponseBody,
@@ -26,3 +27,9 @@ export const requestDesign = (body: DesignRequestBody) =>
 
 export const requestRender = (body: RenderRequestBody) =>
   post<RenderRequestBody, RenderResponseBody>("/api/render", body);
+
+export const requestHealth = async (): Promise<HealthResponse> => {
+  const response = await fetch("/api/health");
+  if (!response.ok) throw new Error("サーバに接続できません");
+  return response.json() as Promise<HealthResponse>;
+};

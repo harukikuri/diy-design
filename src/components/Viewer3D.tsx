@@ -18,6 +18,19 @@ const MM = 0.001; // mm → m
 /** 組み立て済みの部材の色。新しく付ける部材だけが色を持つ (§15.2)。 */
 const ASSEMBLED = "#b6c0c1";
 
+/** 現在のフレームを PNG として取り出せるようにする。 */
+function CaptureBridge({ onReady }: { onReady: (capture: () => string) => void }) {
+  const { gl, scene, camera } = useThree();
+  useEffect(() => {
+    onReady(() => {
+      // toDataURL の直前に描き直さないと、クリア済みのバッファを読むことがある
+      gl.render(scene, camera);
+      return gl.domElement.toDataURL("image/png");
+    });
+  }, [gl, scene, camera, onReady]);
+  return null;
+}
+
 /** 完成品の外形がキャンバスに収まる位置へカメラを置く。 */
 function FitCamera({ size: box }: { size: [number, number, number] }) {
   const { camera, size } = useThree();
@@ -50,6 +63,11 @@ interface Props {
   exploded?: number;
   /** 壁面を描く */
   showWall?: boolean;
+  /**
+   * 描画済みキャンバスを PNG data URL で取り出す関数を受け取る。
+   * 完成イメージ生成の参照画像に使う。
+   */
+  onCaptureReady?: (capture: () => string) => void;
 }
 
 function PartMesh({
@@ -87,7 +105,14 @@ function PartMesh({
   );
 }
 
-export function Viewer3D({ model, visible, highlight, exploded = 0, showWall }: Props) {
+export function Viewer3D({
+  model,
+  visible,
+  highlight,
+  exploded = 0,
+  showWall,
+  onCaptureReady,
+}: Props) {
   const { bounds, parts } = model;
   const center: [number, number, number] = [
     (bounds.x * MM) / 2,
@@ -102,11 +127,13 @@ export function Viewer3D({ model, visible, highlight, exploded = 0, showWall }: 
     <Canvas
       shadows
       dpr={[1, 2]}
+      gl={{ preserveDrawingBuffer: true }}
       camera={{ position: [span * 0.85, span * 0.7, span * 1.15], fov: 38 }}
       key={`${bounds.x}x${bounds.y}x${bounds.z}`}
     >
       <color attach="background" args={["#e7ebea"]} />
       <FitCamera size={[bounds.x * MM, bounds.y * MM, bounds.z * MM]} />
+      {onCaptureReady && <CaptureBridge onReady={onCaptureReady} />}
       <ambientLight intensity={1.5} />
       <directionalLight position={[3, 6, 4]} intensity={2.2} castShadow />
       <directionalLight position={[-4, 2, -3]} intensity={0.7} />

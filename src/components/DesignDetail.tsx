@@ -5,14 +5,16 @@ import type { View } from "./Elevation.tsx";
 import { VIEW_LABEL } from "./Elevation.tsx";
 import { ROLE_COLOR, ROLE_LABEL } from "./partColors.ts";
 import { AssemblyManual } from "./AssemblyManual.tsx";
+import { CompletionImage } from "./CompletionImage.tsx";
 import { PartsTable } from "./PartsTable.tsx";
 import { CutPlanView } from "./CutPlanView.tsx";
 import { Viewer3D } from "./Viewer3D.tsx";
 
-type TabKey = "model" | "views" | "parts" | "cutplan" | "assembly";
+type TabKey = "model" | "image" | "views" | "parts" | "cutplan" | "assembly";
 
 const TABS: { key: TabKey; label: string }[] = [
   { key: "model", label: "3D" },
+  { key: "image", label: "完成イメージ" },
   { key: "views", label: "図面" },
   { key: "parts", label: "部品表" },
   { key: "cutplan", label: "木取り" },
@@ -91,6 +93,8 @@ export function DesignDetail({ design }: Props) {
           </div>
         </>
       )}
+
+      {tab === "image" && <CompletionImage design={design} />}
 
       {tab === "assembly" && <AssemblyManual design={design} />}
 

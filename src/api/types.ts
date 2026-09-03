@@ -55,3 +55,11 @@ export interface RenderResponseBody {
   image: string;
   model: string;
 }
+
+export interface HealthResponse {
+  ok: boolean;
+  /** Gemini API キーが設定され、エージェントと画像生成が使えるか */
+  ai: boolean;
+  agentModel: string;
+  imageModel: string;
+}
