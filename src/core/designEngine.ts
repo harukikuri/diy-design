@@ -104,12 +104,6 @@ function chooseMaterials(
 // ルールベース実装
 // ---------------------------------------------------------------------------
 
-const BASE_STABILITY: Record<StructureType, number> = {
-  four_post_shelf: 0.9,
-  box_shelf: 0.72,
-  wall_shelf: 0.55,
-};
-
 const clamp01 = (v: number) => Math.max(0, Math.min(1, v));
 
 function affinity(type: StructureType, signals: IntentSignals): number {
@@ -174,7 +168,7 @@ export const ruleBasedDesignEngine: DesignEngine = {
           score: {
             // stability は構造そのものの判断。Intent に沿うかどうかは fit 側で持つ。
             // 残り2つは後段のエンジンが実測して上書きする。
-            stability: BASE_STABILITY[compiler.type],
+            stability: compiler.baseStability,
             materialEfficiency: 0,
             simplicity: 0,
           },

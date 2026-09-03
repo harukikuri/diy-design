@@ -48,6 +48,11 @@ export interface StructureCompiler {
   description: string;
   /** この構造が角材を使うか (板材のみの構造では false) */
   usesFrame: boolean;
+  /**
+   * 構造そのものの安定性 (0..1)。荷重の受け方と転倒しにくさの評価であり、
+   * ユーザーの要望とは無関係。要望との適合は DesignCandidate.fit 側で持つ。
+   */
+  baseStability: number;
   constraints: DimensionConstraints;
   params: ParamSpec[];
   defaultParams(dimensions: Dimensions): Record<string, number>;

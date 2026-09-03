@@ -93,6 +93,7 @@ export const wallShelf: StructureCompiler = {
   label: "壁付けシェルフ",
   description: "壁受け桟とL字金具で壁に直付けする。床を占有せず部品も最小だが、耐荷重は壁下地に依存する。",
   usesFrame: true,
+  baseStability: 0.55,
   constraints: {
     width: { min: 300, max: 1800 },
     height: { min: 200, max: 2400 },

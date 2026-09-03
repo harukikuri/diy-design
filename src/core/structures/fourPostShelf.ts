@@ -156,6 +156,7 @@ export const fourPostShelf: StructureCompiler = {
   label: "4本支柱型シェルフ",
   description: "角材の支柱と横架材で骨格を組み、棚板を載せる。荷重に強く、段数を増やしやすい。",
   usesFrame: true,
+  baseStability: 0.9,
   constraints: {
     width: { min: 300, max: 2400 },
     height: { min: 400, max: 2400 },

@@ -95,6 +95,7 @@ export const boxShelf: StructureCompiler = {
   label: "箱型シェルフ",
   description: "板材だけで箱を組む。部品点数が少なく直線切りのみで作れるが、幅を広げるとたわみやすい。",
   usesFrame: false,
+  baseStability: 0.72,
   constraints: {
     width: { min: 250, max: 1200 },
     height: { min: 250, max: 1820 },
