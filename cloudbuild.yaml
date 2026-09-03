@@ -14,6 +14,8 @@
 #   gcloud artifacts repositories create app \
 #     --repository-format=docker --location=asia-northeast1
 
+# 一意なタグには $BUILD_ID を使う。$SHORT_SHA はトリガー実行時にしか
+# 定義されず、手動の gcloud builds submit では空になるため使えない。
 substitutions:
   _REGION: asia-northeast1
   _SERVICE: diy-design-compiler
@@ -37,7 +39,7 @@ steps:
     args:
       - build
       - --cache-from=$_REGION-docker.pkg.dev/$PROJECT_ID/$_REPO/$_SERVICE:latest
-      - -t=$_REGION-docker.pkg.dev/$PROJECT_ID/$_REPO/$_SERVICE:$SHORT_SHA
+      - -t=$_REGION-docker.pkg.dev/$PROJECT_ID/$_REPO/$_SERVICE:$BUILD_ID
       - -t=$_REGION-docker.pkg.dev/$PROJECT_ID/$_REPO/$_SERVICE:latest
       - .
 
@@ -52,7 +54,7 @@ steps:
       - run
       - deploy
       - $_SERVICE
-      - --image=$_REGION-docker.pkg.dev/$PROJECT_ID/$_REPO/$_SERVICE:$SHORT_SHA
+      - --image=$_REGION-docker.pkg.dev/$PROJECT_ID/$_REPO/$_SERVICE:$BUILD_ID
       - --region=$_REGION
       - --allow-unauthenticated
       - --memory=1Gi
@@ -63,7 +65,7 @@ steps:
       - --set-env-vars=AI_BACKEND=$_AI_BACKEND,GOOGLE_CLOUD_PROJECT=$PROJECT_ID,GOOGLE_CLOUD_LOCATION=$_GENAI_LOCATION
 
 images:
-  - $_REGION-docker.pkg.dev/$PROJECT_ID/$_REPO/$_SERVICE:$SHORT_SHA
+  - $_REGION-docker.pkg.dev/$PROJECT_ID/$_REPO/$_SERVICE:$BUILD_ID
   - $_REGION-docker.pkg.dev/$PROJECT_ID/$_REPO/$_SERVICE:latest
 
 options:
