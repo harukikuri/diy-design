@@ -5,6 +5,7 @@ import type { ServerConfig } from "./config.ts";
 import { isAiEnabled } from "./config.ts";
 import type { DesignContext } from "./agent/context.ts";
 import { runDesignAgent, runRuleBased } from "./agent/designAgent.ts";
+import { renderCompletionImage } from "./render.ts";
 
 /** リクエストボディを検証し、設計条件へ直す。 */
 export function toContext(body: unknown): DesignContext {
@@ -56,6 +57,28 @@ export function registerRoutes(app: Express, config: ServerConfig) {
           `設計エージェントが応答しなかったため、ルールベースの候補を表示しています (${(error as Error).message})`,
         ),
       );
+    }
+  });
+
+  app.post("/api/render", async (req: Request, res: Response) => {
+    if (!isAiEnabled(config)) {
+      res.status(503).json({ error: "完成イメージの生成には GEMINI_API_KEY が必要です。" });
+      return;
+    }
+    const description = (req.body as { description?: unknown })?.description;
+    if (typeof description !== "string" || description.trim().length === 0) {
+      res.status(400).json({ error: "description は必須です。" });
+      return;
+    }
+    try {
+      const result = await renderCompletionImage(config, {
+        description: description.slice(0, 2000),
+        referencePng: (req.body as { referencePng?: string }).referencePng,
+      });
+      res.json(result);
+    } catch (error) {
+      console.error("[render] 画像生成失敗:", error);
+      res.status(502).json({ error: (error as Error).message });
     }
   });
 }
