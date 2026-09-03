@@ -1,0 +1,13 @@
+# Cloud Build へ送らないもの。
+# 明示しないと .gitignore から推測されるため、認証情報は必ずここにも書く。
+.git
+.gitignore
+node_modules
+dist
+dist-server
+*.log
+
+# 認証情報 (.env.example だけは送る)
+.env
+.env.*
+!.env.example
