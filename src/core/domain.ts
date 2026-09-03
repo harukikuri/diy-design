@@ -91,6 +91,12 @@ export type CutSpec =
 
 export type FastenerType = "screw" | "bolt" | "bracket" | "glue";
 
+/**
+ * 壁など、製作物に含まれない取付面を指す擬似 Part ID。
+ * Connection の接続先としてのみ使い、部品表・木取りには現れない。
+ */
+export const WALL_ANCHOR = "wall";
+
 export interface Connection {
   id: string;
   fromPartId: string;
