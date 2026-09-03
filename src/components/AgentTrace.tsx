@@ -30,7 +30,7 @@ export function AgentTrace({ trace, engine, model, evaluated }: Props) {
           {engine === "agent" ? "エージェントの検討過程" : "候補の生成"}
         </span>
         <span className="trace__meta">
-          {model ?? "rule-based"} · {evaluated} 案を評価
+          {model ?? "rule-based"} · {evaluated.toLocaleString("ja-JP")} 通りを検証
         </span>
       </summary>
       <div className="trace__list">

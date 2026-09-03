@@ -28,8 +28,16 @@ export interface SubmittedDesign {
 
 export interface ToolCollector {
   trace: AgentTraceEntry[];
-  /** 評価した案 (採用されなかったものも含む) */
+  /**
+   * 決定論エンジンに通した組み合わせの総数。掃引で計算した分も含む。
+   * 表示用であり、上限判定には使わない。
+   */
   evaluated: number;
+  /**
+   * エージェントが evaluate_design を直接呼んだ回数。上限judgeはこちらで行う。
+   * 掃引はエンジン側の計算なので、いくら回っても上限を消費しない。
+   */
+  directEvaluations: number;
   submitted: SubmittedDesign[] | null;
   notes: string[];
   /** 同じ案を二度評価させないための記憶 */
@@ -37,7 +45,7 @@ export interface ToolCollector {
 }
 
 export function createCollector(): ToolCollector {
-  return { trace: [], evaluated: 0, submitted: null, notes: [], seen: new Map() };
+  return { trace: [], evaluated: 0, directEvaluations: 0, submitted: null, notes: [], seen: new Map() };
 }
 
 const proposalKey = (p: DesignProposalInput) =>
@@ -136,7 +144,7 @@ export function createTools(
       if (cached) {
         return { ...(cached as object), note: "この案は評価済みです。結果は同じです。" };
       }
-      if (collector.evaluated >= maxEvaluations) {
+      if (collector.directEvaluations >= maxEvaluations) {
         return {
           error: `評価は ${maxEvaluations} 回までです。これまでの結果から submit_designs を呼んでください。`,
         };
@@ -145,6 +153,7 @@ export function createTools(
       const { summary } = evaluateProposal(context, proposal);
       collector.seen.set(key, summary);
       collector.evaluated += 1;
+      collector.directEvaluations += 1;
       collector.trace.push({
         step: collector.trace.length + 1,
         tool: "evaluate_design",
@@ -217,6 +226,7 @@ export function createTools(
        * 落とすと強度の選択肢が消える。したがって段数ごとに、
        * 歩留まり・費用・板厚のすべてで劣る材料の組み合わせだけを落とす。
        */
+      collector.evaluated += rows.length;
       const buildable = rows.filter((r) => r.ok);
       const frontier = buildable.filter(
         (a) =>

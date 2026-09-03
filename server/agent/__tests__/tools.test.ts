@@ -151,7 +151,7 @@ describe("探索の歯止め", () => {
       args: { ...sane, shelfCount: 6 },
     } as never)) as { error?: string };
 
-    expect(collector.evaluated).toBe(2);
+    expect(collector.directEvaluations).toBe(2);
     expect(blocked.error).toContain("submit_designs");
   });
 });
@@ -234,5 +234,37 @@ describe("掃引と確定の保証", () => {
 
     expect(rejected.error).toContain("検証していない案は確定できません");
     expect(collector.submitted).toBeNull();
+  });
+});
+
+describe("検証件数の数え方", () => {
+  it("掃引した組み合わせも検証件数に数える", async () => {
+    const collector = createCollector();
+    const compare = createTools(context, collector).find((t) => t.name === "compare_options")!;
+
+    await compare.runAsync({
+      args: { structureType: "four_post_shelf", frameMaterialId: "lumber_2x4" },
+    } as never);
+
+    // 画面に「0 通りを検証」と出さないための担保
+    expect(collector.evaluated).toBe(7 * 3);
+  });
+
+  it("掃引は evaluate_design の回数上限を消費しない", async () => {
+    const collector = createCollector();
+    const tools = createTools(context, collector, 2);
+    const compare = tools.find((t) => t.name === "compare_options")!;
+    const evaluate = tools.find((t) => t.name === "evaluate_design")!;
+
+    await compare.runAsync({
+      args: { structureType: "four_post_shelf", frameMaterialId: "lumber_2x4" },
+    } as never);
+    // 掃引で 21 通り回っていても、直接評価はまだ 0 回なので拒否されない
+    const result = (await evaluate.runAsync({
+      args: { ...sane, shelfCount: 2, panelMaterialId: "board_ply12" },
+    } as never)) as { error?: string; note?: string };
+
+    expect(result.error).toBeUndefined();
+    expect(collector.directEvaluations).toBeLessThanOrEqual(1);
   });
 });

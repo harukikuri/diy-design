@@ -47,7 +47,7 @@ export interface DesignResponseBody {
   candidates: DesignCandidate[];
   notes: string[];
   trace: AgentTraceEntry[];
-  /** エージェントが評価した案の総数 (採用されなかったものを含む) */
+  /** 決定論エンジンに通した組み合わせの総数 (採用されなかったものを含む) */
   evaluated: number;
   usage?: AgentUsage;
 }
