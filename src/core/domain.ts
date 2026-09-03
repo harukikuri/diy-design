@@ -143,6 +143,12 @@ export interface DesignCandidate {
   summary: string;
   structure: Structure;
   score: DesignScore;
+  /**
+   * ユーザーの Intent にどれだけ沿うか (0..1)。
+   * 構造そのものの良し悪しではなく「今回の要望に合うか」なので、
+   * score とは別に持ち、並び順にだけ効かせる。
+   */
+  fit: number;
 }
 
 // ---------------------------------------------------------------------------

@@ -110,6 +110,8 @@ const BASE_STABILITY: Record<StructureType, number> = {
   wall_shelf: 0.55,
 };
 
+const clamp01 = (v: number) => Math.max(0, Math.min(1, v));
+
 function affinity(type: StructureType, signals: IntentSignals): number {
   let score = 0;
   if (signals.wall) score += type === "wall_shelf" ? 0.4 : -0.1;
@@ -170,14 +172,16 @@ export const ruleBasedDesignEngine: DesignEngine = {
             panelMaterialId,
           },
           score: {
-            // stability は構造上の判断。残り2つは後段のエンジンが実測して上書きする。
-            stability: Math.max(0, Math.min(1, BASE_STABILITY[compiler.type] + affinity(compiler.type, signals))),
+            // stability は構造そのものの判断。Intent に沿うかどうかは fit 側で持つ。
+            // 残り2つは後段のエンジンが実測して上書きする。
+            stability: BASE_STABILITY[compiler.type],
             materialEfficiency: 0,
             simplicity: 0,
           },
+          fit: clamp01(0.5 + affinity(compiler.type, signals)),
         } satisfies DesignCandidate;
       })
-      .sort((a, b) => b.score.stability - a.score.stability);
+      .sort((a, b) => b.fit - a.fit);
 
     return { candidates, notes };
   },

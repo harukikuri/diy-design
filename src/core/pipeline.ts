@@ -94,9 +94,14 @@ function simplicityOf(model: PhysicalModel): number {
   return Number((partScore * 0.6 + cutScore * 0.4).toFixed(3));
 }
 
-/** 総合点。候補の並び順に使う。 */
-export function overallScore({ score }: DesignCandidate): number {
-  return score.stability * 0.45 + score.materialEfficiency * 0.35 + score.simplicity * 0.2;
+/** 総合点。候補の並び順に使う。Intent への適合 (fit) もここでだけ効かせる。 */
+export function overallScore({ score, fit }: DesignCandidate): number {
+  return (
+    score.stability * 0.3 +
+    score.materialEfficiency * 0.25 +
+    score.simplicity * 0.15 +
+    fit * 0.3
+  );
 }
 
 export interface PipelineResult {

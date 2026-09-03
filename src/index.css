@@ -610,14 +610,23 @@ select {
   opacity: 0.62;
 }
 
+/* SVG に高さを決めさせず、枠のアスペクト比でカードの背丈を揃える */
 .card__thumb {
+  position: relative;
   display: flex;
   align-items: center;
   justify-content: center;
-  aspect-ratio: 4 / 3;
-  padding: 18px;
+  aspect-ratio: 4 / 5;
   background: var(--surface-sunk);
   border-bottom: 1px solid var(--line);
+}
+
+.card__thumb > .elevation {
+  position: absolute;
+  top: 18px;
+  left: 18px;
+  width: calc(100% - 36px);
+  height: calc(100% - 36px);
 }
 
 .card__body {
@@ -813,10 +822,18 @@ select {
 }
 
 .views__figure {
+  position: relative;
   height: 260px;
-  padding: 8px;
   background: var(--surface-sunk);
   border-radius: var(--r-sm);
+}
+
+.views__figure > .elevation {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  width: calc(100% - 16px);
+  height: calc(100% - 16px);
 }
 
 .views__caption {

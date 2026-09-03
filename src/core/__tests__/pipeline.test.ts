@@ -92,3 +92,33 @@ describe("パイプライン", () => {
     expect(notes.join()).toContain("寸法");
   });
 });
+
+describe("スコアの分離", () => {
+  it("Intent が変わっても構造そのものの安定性は変わらない", async () => {
+    const dimensions = { width: 900, height: 1200, depth: 250 };
+    const stabilityFor = async (intent: string) => {
+      const { designs } = await runPipeline(ruleBasedDesignEngine, {
+        intent,
+        dimensions,
+        ownedStock: [],
+      });
+      return designs.find((d) => d.candidate.structure.type === "wall_shelf")!.candidate.score
+        .stability;
+    };
+    // 壁付けを望まれたからといって、壁付け棚が頑丈になるわけではない
+    expect(await stabilityFor("壁に浮かせたい")).toBe(await stabilityFor("頑丈な棚"));
+  });
+
+  it("Intent への適合は fit に出る", async () => {
+    const dimensions = { width: 900, height: 1200, depth: 250 };
+    const fitFor = async (intent: string) => {
+      const { designs } = await runPipeline(ruleBasedDesignEngine, {
+        intent,
+        dimensions,
+        ownedStock: [],
+      });
+      return designs.find((d) => d.candidate.structure.type === "wall_shelf")!.candidate.fit;
+    };
+    expect(await fitFor("壁に浮かせたい")).toBeGreaterThan(await fitFor("頑丈な棚"));
+  });
+});
