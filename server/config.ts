@@ -32,6 +32,8 @@ export interface ServerConfig {
   imageModel: string;
   /** 1リクエストあたりのエージェントの最大ツール呼び出し回数 */
   maxToolCalls: number;
+  /** 1リクエストあたり evaluate_design を呼べる回数 */
+  maxEvaluations: number;
   /** ビルド済みフロントエンドの場所 */
   staticDir: string;
 }
@@ -65,6 +67,7 @@ export function loadConfig(): ServerConfig {
     retries: Number(process.env.AGENT_RETRIES ?? 1),
     imageModel: process.env.IMAGE_MODEL ?? "gemini-3.1-flash-image",
     maxToolCalls: Number(process.env.MAX_TOOL_CALLS ?? 16),
+    maxEvaluations: Number(process.env.MAX_EVALUATIONS ?? 6),
     staticDir: process.env.STATIC_DIR ?? "dist",
   };
 }

@@ -3,7 +3,7 @@ import { z } from "zod";
 import type { AgentTraceEntry } from "../../src/api/types.ts";
 import type { StructureType } from "../../src/core/domain.ts";
 import { MATERIALS } from "../../src/core/materials.ts";
-import { STRUCTURES } from "../../src/core/structures/index.ts";
+import { getStructure, STRUCTURES } from "../../src/core/structures/index.ts";
 import type { DesignContext, DesignProposalInput } from "./context.ts";
 import { evaluateProposal } from "./context.ts";
 
@@ -32,11 +32,16 @@ export interface ToolCollector {
   evaluated: number;
   submitted: SubmittedDesign[] | null;
   notes: string[];
+  /** 同じ案を二度評価させないための記憶 */
+  seen: Map<string, unknown>;
 }
 
 export function createCollector(): ToolCollector {
-  return { trace: [], evaluated: 0, submitted: null, notes: [] };
+  return { trace: [], evaluated: 0, submitted: null, notes: [], seen: new Map() };
 }
+
+const proposalKey = (p: DesignProposalInput) =>
+  `${p.structureType}|${p.shelfCount}|${p.frameMaterialId}|${p.panelMaterialId}`;
 
 const STRUCTURE_TYPES = STRUCTURES.map((s) => s.type) as [StructureType, ...StructureType[]];
 
@@ -52,7 +57,11 @@ const proposalShape = {
   panelMaterialId: z.enum(idsOfKind("board")).describe("面材 (棚板・側板) に使う板材の材料 ID"),
 };
 
-export function createTools(context: DesignContext, collector: ToolCollector) {
+export function createTools(
+  context: DesignContext,
+  collector: ToolCollector,
+  maxEvaluations = 6,
+) {
   const listStructures = new FunctionTool({
     name: "list_structures",
     description:
@@ -120,7 +129,21 @@ export function createTools(context: DesignContext, collector: ToolCollector) {
     parameters: z.object(proposalShape),
     execute: (input) => {
       const proposal = input as DesignProposalInput;
+      const key = proposalKey(proposal);
+
+      // 同じ案を二度評価しても結果は変わらない。往復とトークンの無駄なので弾く。
+      const cached = collector.seen.get(key);
+      if (cached) {
+        return { ...(cached as object), note: "この案は評価済みです。結果は同じです。" };
+      }
+      if (collector.evaluated >= maxEvaluations) {
+        return {
+          error: `評価は ${maxEvaluations} 回までです。これまでの結果から submit_designs を呼んでください。`,
+        };
+      }
+
       const { summary } = evaluateProposal(context, proposal);
+      collector.seen.set(key, summary);
       collector.evaluated += 1;
       collector.trace.push({
         step: collector.trace.length + 1,
@@ -135,6 +158,113 @@ export function createTools(context: DesignContext, collector: ToolCollector) {
         issues: summary.issues,
       });
       return summary;
+    },
+  });
+
+  const compareOptions = new FunctionTool({
+    name: "compare_options",
+    description:
+      "1つの構造について、段数と板材のすべての組み合わせを実際に部材へ展開し、" +
+      "歩留まり・部材点数・概算費用・検証結果の件数を表で返す。" +
+      "候補を選ぶ前にこれを呼べば、1回の往復で全体像が手に入る。" +
+      "個別の指摘内容まで見たいときは evaluate_design を使う。",
+    parameters: z.object({
+      structureType: z.enum(STRUCTURE_TYPES).describe("比較する構造"),
+      frameMaterialId: z.enum(idsOfKind("lumber")).describe("骨格に使う角材 (固定)"),
+    }),
+    execute: (input) => {
+      const { structureType, frameMaterialId } = input as {
+        structureType: StructureType;
+        frameMaterialId: string;
+      };
+      const compiler = getStructure(structureType);
+      const range = compiler.params.find((p) => p.key === "shelfCount");
+      const panels = MATERIALS.filter((m) => m.kind === "board");
+
+      const rows: Record<string, unknown>[] = [];
+      for (let n = range?.min ?? 1; n <= (range?.max ?? 6); n += 1) {
+        for (const panel of panels) {
+          const proposal = {
+            structureType,
+            shelfCount: n,
+            frameMaterialId,
+            panelMaterialId: panel.id,
+          };
+          const { summary } = evaluateProposal(context, proposal);
+          // 掃引で通した案は検証済みとして扱う (submit_designs はこれを見る)
+          collector.seen.set(proposalKey(proposal), summary);
+          rows.push({
+            shelfCount: n,
+            panelMaterialId: panel.id,
+            // 板厚は棚板のたわみにくさの目安。強度の判断材料として必ず見せる。
+            panelThickness: panel.thickness,
+            ok: summary.ok,
+            parts: summary.parts.total,
+            utilization: summary.cut.utilization,
+            cost: summary.cut.estimatedCost,
+            errors: summary.issues.filter((i) => i.level === "error").length,
+            warnings: summary.issues.filter((i) => i.level === "warning").length,
+          });
+        }
+      }
+
+      /*
+       * 表を小さくするために選ぶ理由の無い行を落とす。ただし比較は同じ段数どうしに限る。
+       *
+       * 段数は棚の機能そのもの (段が多いほど収納が増える) なので、
+       * 段数をまたいで「部材が少ない方が良い」と判定すると、
+       * ただ段数の少ない案が勝ってしまう。板厚も同様に、薄い方が安いからといって
+       * 落とすと強度の選択肢が消える。したがって段数ごとに、
+       * 歩留まり・費用・板厚のすべてで劣る材料の組み合わせだけを落とす。
+       */
+      const buildable = rows.filter((r) => r.ok);
+      const frontier = buildable.filter(
+        (a) =>
+          !buildable.some(
+            (b) =>
+              b !== a &&
+              b.shelfCount === a.shelfCount &&
+              (b.utilization as number) >= (a.utilization as number) &&
+              (b.cost as number) <= (a.cost as number) &&
+              (b.panelThickness as number) >= (a.panelThickness as number) &&
+              ((b.utilization as number) > (a.utilization as number) ||
+                (b.cost as number) < (a.cost as number) ||
+                (b.panelThickness as number) > (a.panelThickness as number)),
+          ),
+      );
+      collector.trace.push({
+        step: collector.trace.length + 1,
+        tool: "compare_options",
+        label: `${compiler.label}: ${rows.length} 通りを比較`,
+        outcome: "info",
+        facts: [
+          { label: "作れる", value: `${buildable.length} 通り` },
+          { label: "非劣解", value: `${frontier.length} 通り` },
+          {
+            label: "最高歩留まり",
+            value: buildable.length
+              ? `${Math.round(Math.max(...buildable.map((r) => r.utilization as number)) * 100)}%`
+              : "—",
+          },
+          {
+            label: "最安",
+            value: buildable.length
+              ? `¥${Math.min(...buildable.map((r) => r.cost as number)).toLocaleString("ja-JP")}`
+              : "—",
+          },
+        ],
+      });
+      return {
+        structure: compiler.label,
+        frameMaterialId,
+        evaluated: rows.length,
+        buildable: buildable.length,
+        // 他に全面的に勝る案が無い行だけを返す。落とした行は選ぶ理由が無いもの。
+        note:
+          "同じ段数の中で、歩留まり・費用・板厚のすべてで他に劣る板材だけを省いてある。" +
+          "段数は削っていない。板厚は棚板のたわみにくさの目安で、重い物を載せるなら厚い方が良い。",
+        rows: frontier,
+      };
     },
   });
 
@@ -168,6 +298,19 @@ export function createTools(context: DesignContext, collector: ToolCollector) {
     }),
     execute: (input) => {
       const parsed = input as { designs: SubmittedDesign[]; notes?: string[] };
+
+      // 検証を通っていない案をユーザーに出さない。指示ではなくここで保証する。
+      const unverified = parsed.designs.filter((d) => !collector.seen.has(proposalKey(d)));
+      if (unverified.length > 0) {
+        return {
+          error:
+            "検証していない案は確定できません。次の案を evaluate_design か compare_options で先に評価してください: " +
+            unverified
+              .map((d) => `${d.structureType}/${d.shelfCount}段/${d.panelMaterialId}`)
+              .join(", "),
+        };
+      }
+
       collector.submitted = parsed.designs;
       collector.notes = parsed.notes ?? [];
       collector.trace.push({
@@ -184,5 +327,5 @@ export function createTools(context: DesignContext, collector: ToolCollector) {
     },
   });
 
-  return [listStructures, listMaterials, evaluateDesign, submitDesigns];
+  return [listStructures, listMaterials, compareOptions, evaluateDesign, submitDesigns];
 }
