@@ -126,6 +126,16 @@ npm start                   # ビルド済みを 1 プロセスで配信
 PROJECT_ID=your-project ./deploy/cloudrun.sh
 ```
 
+`PROJECT_ID` は必ず明示する。gcloud のアクティブなプロジェクトへは
+意図的にフォールバックしない（別用途のプロジェクトへの誤デプロイを防ぐため）。
+デプロイ前に対象プロジェクトとアカウントを表示して確認を取る。
+
+gcloud の構成を分けている場合は、グローバルの active を切り替えずに実行できる:
+
+```sh
+CLOUDSDK_ACTIVE_CONFIG_NAME=diy-personal PROJECT_ID=your-project ./deploy/cloudrun.sh
+```
+
 初回に必要な API 有効化と Secret Manager の準備は
 [`deploy/cloudrun.sh`](./deploy/cloudrun.sh) の先頭コメントにある。
 
