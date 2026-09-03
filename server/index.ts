@@ -2,6 +2,7 @@ import express from "express";
 import { existsSync } from "node:fs";
 import { resolve } from "node:path";
 import { isAiEnabled, loadConfig } from "./config.ts";
+import { registerRoutes } from "./routes.ts";
 
 const config = loadConfig();
 const app = express();
@@ -16,6 +17,8 @@ app.get("/api/health", (_req, res) => {
     imageModel: config.imageModel,
   });
 });
+
+registerRoutes(app, config);
 
 // ビルド済みのフロントエンドを同じサービスから配る (Cloud Run 1サービス構成)
 const staticDir = resolve(process.cwd(), config.staticDir);
