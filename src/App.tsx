@@ -5,12 +5,17 @@ import type { PipelineResult } from "./core/pipeline.ts";
 import { runPipeline } from "./core/pipeline.ts";
 import type { FormState } from "./components/InputForm.tsx";
 import { InputForm, initialForm } from "./components/InputForm.tsx";
+import { CandidateGrid } from "./components/CandidateGrid.tsx";
 import { Scale, STANDARD_SPAN } from "./components/Scale.tsx";
 
 export default function App() {
   const [form, setForm] = useState<FormState>(initialForm);
   const [result, setResult] = useState<PipelineResult | null>(null);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+
+  const selected =
+    result?.designs.find((d) => d.candidate.id === selectedId) ?? null;
 
   const design = async () => {
     setBusy(true);
@@ -28,6 +33,7 @@ export default function App() {
         { kerf: form.kerf },
       );
       setResult(next);
+      setSelectedId(next.designs[0]?.candidate.id ?? null);
     } finally {
       setBusy(false);
     }
@@ -69,26 +75,34 @@ export default function App() {
                   <span>{note}</span>
                 </div>
               ))}
-              <div className="panel" style={{ marginTop: 12 }}>
-                <div className="panel__head">
-                  <h2 className="panel__title">設計候補</h2>
+              <section className="section" style={{ marginTop: 12 }}>
+                <div className="section-head">
+                  <h2>設計候補</h2>
                   <span className="eyebrow num">{result.designs.length} candidates</span>
                 </div>
-                <div className="panel__body">
-                  {result.designs.length === 0 ? (
-                    <p className="empty">条件に合う構造がありません。</p>
-                  ) : (
-                    <ul>
-                      {result.designs.map((d) => (
-                        <li key={d.candidate.id}>
-                          {d.candidate.title} — 部材 {d.model.parts.length} 点 / 材料費 約
-                          <span className="num"> {d.cutPlan.estimatedCost.toLocaleString()}</span> 円
-                        </li>
-                      ))}
-                    </ul>
-                  )}
-                </div>
-              </div>
+                {result.designs.length === 0 ? (
+                  <div className="panel">
+                    <p className="empty">条件に合う構造がありません。寸法を見直してください。</p>
+                  </div>
+                ) : (
+                  <CandidateGrid
+                    designs={result.designs}
+                    selectedId={selectedId}
+                    onSelect={setSelectedId}
+                  />
+                )}
+              </section>
+
+              {selected && (
+                <section className="section" style={{ marginTop: 28 }}>
+                  <div className="section-head">
+                    <h2>{selected.candidate.title}</h2>
+                  </div>
+                  <div className="panel">
+                    <p className="empty">詳細は準備中</p>
+                  </div>
+                </section>
+              )}
             </>
           )}
         </div>
