@@ -1160,3 +1160,156 @@ select {
     scroll-behavior: auto !important;
   }
 }
+
+/* --------------------------------------------------------------------------
+ * エージェントの検討過程
+ * -------------------------------------------------------------------------- */
+
+.trace {
+  margin-bottom: 20px;
+}
+
+.trace__summary {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 16px;
+  cursor: pointer;
+  list-style: none;
+}
+
+.trace__summary::-webkit-details-marker {
+  display: none;
+}
+
+.trace__title {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.trace__title::before {
+  content: "▸";
+  color: var(--ink-3);
+  font-size: 11px;
+}
+
+.trace[open] .trace__title::before {
+  content: "▾";
+}
+
+.trace__meta {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--ink-3);
+}
+
+.trace__list {
+  padding: 4px 16px 16px;
+  border-top: 1px solid var(--line);
+}
+
+.trace__row {
+  display: grid;
+  grid-template-columns: 26px minmax(0, 1fr);
+  gap: 10px;
+  padding: 10px 0;
+  border-bottom: 1px dashed var(--line);
+}
+
+.trace__row:last-child {
+  border-bottom: none;
+}
+
+.trace__no {
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  margin-top: 1px;
+  border-radius: 50%;
+  background: var(--surface-sunk);
+  font-family: var(--mono);
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--ink-2);
+}
+
+.trace__row--ok .trace__no {
+  background: var(--teal-wash);
+  color: var(--teal-deep);
+}
+
+.trace__row--rejected .trace__no {
+  background: var(--amber-wash);
+  color: #8a5510;
+}
+
+.trace__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 6px 10px;
+}
+
+.trace__tool {
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  color: var(--ink-3);
+}
+
+.trace__label {
+  font-size: 13px;
+}
+
+.trace__verdict {
+  padding: 0 7px;
+  border-radius: 999px;
+  font-size: 11px;
+}
+
+.trace__verdict--ok {
+  background: var(--teal-wash);
+  color: var(--teal-deep);
+}
+
+.trace__verdict--rejected {
+  background: var(--amber-wash);
+  color: #8a5510;
+}
+
+.trace__facts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 3px 14px;
+  margin-top: 4px;
+  font-size: 12px;
+  color: var(--ink-2);
+}
+
+.trace__facts b {
+  font-family: var(--mono);
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.trace__issue {
+  margin-top: 4px;
+  font-size: 12px;
+  line-height: 1.6;
+  color: var(--ink-2);
+}
+
+.trace__issue::before {
+  content: "△ ";
+  color: var(--amber);
+}
+
+.trace__issue--error::before {
+  content: "! ";
+  color: var(--danger);
+}
