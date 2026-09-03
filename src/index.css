@@ -835,3 +835,135 @@ select {
   font-size: 11px;
   color: var(--ink-3);
 }
+
+/* --------------------------------------------------------------------------
+ * 木取り図
+ * -------------------------------------------------------------------------- */
+
+.cutplan {
+  display: grid;
+  gap: 22px;
+}
+
+.cutplan__meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 20px;
+  padding: 10px 12px;
+  background: var(--surface-sunk);
+  border-radius: var(--r-sm);
+  font-size: 12px;
+  color: var(--ink-2);
+}
+
+.cutplan__meta b {
+  font-family: var(--mono);
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.stick {
+  margin-bottom: 12px;
+}
+
+.stick__head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 4px;
+  font-size: 12px;
+}
+
+.stick__name b {
+  font-weight: 700;
+}
+
+.stick__tag {
+  margin-left: 6px;
+  padding: 0 6px;
+  border-radius: 999px;
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.06em;
+}
+
+.stick__tag--owned {
+  background: var(--teal-wash);
+  color: var(--teal-deep);
+}
+
+.stick__tag--buy {
+  background: var(--surface-sunk);
+  color: var(--ink-2);
+}
+
+.stick__waste {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--ink-3);
+}
+
+.stick__bar {
+  position: relative;
+  height: 30px;
+  background: repeating-linear-gradient(
+    -45deg,
+    var(--surface-sunk) 0 5px,
+    #dde3e2 5px 10px
+  );
+  border: 1px solid var(--line-strong);
+  border-radius: var(--r-sm);
+  overflow: hidden;
+}
+
+.stick__cut {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  background: var(--teal-wash);
+  border-right: 2px solid var(--teal);
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--teal-deep);
+  white-space: nowrap;
+}
+
+.sheets {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 18px;
+}
+
+.sheet {
+  width: 200px;
+}
+
+.sheet__figure {
+  background: repeating-linear-gradient(
+    -45deg,
+    var(--surface-sunk) 0 5px,
+    #dde3e2 5px 10px
+  );
+  border: 1px solid var(--line-strong);
+  border-radius: var(--r-sm);
+}
+
+.sheet__svg {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.sheet__caption {
+  display: grid;
+  gap: 1px;
+  margin-top: 6px;
+  font-size: 11px;
+  line-height: 1.5;
+  color: var(--ink-2);
+}

@@ -219,18 +219,22 @@ function packSheets(
   const pool = owned.map((p) => p.length).sort((a, b) => a - b);
   let seq = 0;
 
-  // 長辺をシート幅に収められるならシート幅方向へ、無理ならシート長方向へ寝かせる。
+  /**
+   * 1本のストリップに何枚並ぶかと、そのストリップが食うシート長を比べて向きを決める。
+   * 長辺を幅方向に寝かせるより、短辺を並べた方が長さを節約できることが多い。
+   */
+  const yieldOf = (w: Mm, h: Mm) => Math.floor((SW + kerf) / (w + kerf)) / h;
+
   const oriented = reqs
     .map((r) => {
-      const long = Math.max(r.a, r.b);
-      const short = Math.min(r.a, r.b);
-      const alongWidth = long <= SW;
-      return {
-        ...r,
-        w: alongWidth ? long : short,
-        h: alongWidth ? short : long,
-        rotated: (alongWidth ? long : short) !== r.a,
-      };
+      const options = [
+        { w: r.a, h: r.b },
+        { w: r.b, h: r.a },
+      ].filter((o) => o.w <= SW);
+      const best = options.length
+        ? options.reduce((x, y) => (yieldOf(y.w, y.h) > yieldOf(x.w, x.h) ? y : x))
+        : { w: Math.min(r.a, r.b), h: Math.max(r.a, r.b) }; // どう置いても入らない
+      return { ...r, w: best.w, h: best.h, rotated: best.w !== r.a };
     })
     .sort((x, y) => y.h - x.h);
 
