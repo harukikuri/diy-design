@@ -1,6 +1,6 @@
 import { Canvas, useThree } from "@react-three/fiber";
 import { Grid, OrbitControls } from "@react-three/drei";
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Vector3 } from "three";
 import type { Part, PhysicalModel } from "../core/domain.ts";
 import { WALL_ANCHOR } from "../core/domain.ts";
@@ -121,6 +121,8 @@ export function Viewer3D({
   ];
   const span = Math.max(bounds.x, bounds.y, bounds.z) * MM;
   const shown = visible ? parts.filter((p) => visible.includes(p.id)) : parts;
+  // 触るまではゆっくり回す。操作したら止めて、以降はユーザーに預ける。
+  const [autoRotate, setAutoRotate] = useState(true);
   const wall = showWall ?? model.connections.some((c) => c.toPartId === WALL_ANCHOR);
 
   return (
@@ -174,6 +176,9 @@ export function Viewer3D({
 
       <OrbitControls
         makeDefault
+        autoRotate={autoRotate}
+        autoRotateSpeed={0.6}
+        onStart={() => setAutoRotate(false)}
         target={[0, center[1], 0]}
         minDistance={span * 0.5}
         maxDistance={span * 6}

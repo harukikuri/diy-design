@@ -151,8 +151,9 @@ async function runOnce(
   context: DesignContext,
   config: ServerConfig,
   model: string,
+  onTrace?: (entry: AgentTraceEntry) => void,
 ): Promise<DesignResponseBody> {
-  const collector = createCollector();
+  const collector = createCollector(onTrace);
   const agent = new LlmAgent({
     name: "diy_design_agent",
     description: "DIY の設計候補を、実際に製作可能かを検証しながら組み立てる",
@@ -231,6 +232,7 @@ async function runOnce(
 export async function runDesignAgent(
   context: DesignContext,
   config: ServerConfig,
+  onTrace?: (entry: AgentTraceEntry) => void,
 ): Promise<DesignResponseBody> {
   const models = [config.agentModel, ...config.fallbackModels];
   const failures: { model: string; error: Error }[] = [];
@@ -238,7 +240,7 @@ export async function runDesignAgent(
   for (const [index, model] of models.entries()) {
     for (let attempt = 0; attempt <= config.retries; attempt += 1) {
       try {
-        const result = await runOnce(context, config, model);
+        const result = await runOnce(context, config, model, onTrace);
         if (index > 0) {
           result.notes.push(
             `${config.agentModel} が使えなかったため ${model} で設計しました。`,
@@ -273,6 +275,7 @@ export class AgentUnavailableError extends Error {
 export async function runRuleBased(
   context: DesignContext,
   reason?: string,
+  onTrace?: (entry: AgentTraceEntry) => void,
 ): Promise<DesignResponseBody> {
   const { candidates, notes } = await ruleBasedDesignEngine.propose({
     intent: context.intent,
@@ -280,15 +283,15 @@ export async function runRuleBased(
     ownedStock: context.ownedStock,
   });
 
-  const trace: AgentTraceEntry[] = [
-    {
-      step: 1,
-      tool: "rule_based",
-      label: reason ?? "ルールベースの設計エンジンで候補を生成",
-      outcome: "info",
-      facts: [{ label: "候補", value: `${candidates.length} 件` }],
-    },
-  ];
+  const entry: AgentTraceEntry = {
+    step: 1,
+    tool: "rule_based",
+    label: reason ?? "ルールベースの設計エンジンで候補を生成",
+    outcome: "info",
+    facts: [{ label: "候補", value: `${candidates.length} 件` }],
+  };
+  onTrace?.(entry);
+  const trace = [entry];
 
   return {
     engine: "rule-based",

@@ -1,5 +1,9 @@
 import type { Express, Request, Response } from "express";
-import type { DesignRequestBody, DesignResponseBody } from "../src/api/types.ts";
+import type {
+  AgentTraceEntry,
+  DesignRequestBody,
+  DesignResponseBody,
+} from "../src/api/types.ts";
 import { createStock, getMaterial } from "../src/core/materials.ts";
 import type { ServerConfig } from "./config.ts";
 import { isAiEnabled } from "./config.ts";
@@ -56,6 +60,55 @@ export function registerRoutes(app: Express, config: ServerConfig) {
           ? error.message
           : `設計エージェントが応答しなかったため、ルールベースの候補を表示しています (${(error as Error).message})`;
       res.json(await runRuleBased(context, reason));
+    }
+  });
+
+  /**
+   * 設計中の足跡をその場で流す (Server-Sent Events)。
+   * エージェントは 20 秒以上動き続けるので、終わるまで黙っているとその間が死ぬ。
+   * 何を試しているかを逐次見せる。
+   */
+  app.post("/api/design/stream", async (req: Request, res: Response) => {
+    let context: DesignContext;
+    try {
+      context = toContext(req.body);
+    } catch (error) {
+      res.status(400).json({ error: (error as Error).message });
+      return;
+    }
+
+    res.writeHead(200, {
+      "content-type": "text/event-stream; charset=utf-8",
+      "cache-control": "no-cache, no-transform",
+      connection: "keep-alive",
+      // プロキシに握られてバッファされないようにする
+      "x-accel-buffering": "no",
+    });
+
+    const send = (event: string, data: unknown) => {
+      res.write(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`);
+    };
+
+    const onTrace = (entry: AgentTraceEntry) => send("trace", entry);
+
+    try {
+      const result = isAiEnabled(config)
+        ? await runDesignAgent(context, config, onTrace)
+        : await runRuleBased(context, undefined, onTrace);
+      send("done", result);
+    } catch (error) {
+      console.error("[design] エージェント失敗:", error);
+      const reason =
+        error instanceof AgentUnavailableError
+          ? error.message
+          : `設計エージェントが応答しなかったため、ルールベースの候補を表示しています (${(error as Error).message})`;
+      try {
+        send("done", await runRuleBased(context, reason, onTrace));
+      } catch (fallbackError) {
+        send("failed", { error: (fallbackError as Error).message });
+      }
+    } finally {
+      res.end();
     }
   });
 

@@ -15,25 +15,41 @@ const VERDICT_LABEL: Record<AgentTraceEntry["outcome"], string | null> = {
 
 interface Props {
   trace: AgentTraceEntry[];
-  engine: "agent" | "rule-based";
+  engine?: "agent" | "rule-based";
   model?: string;
-  evaluated: number;
+  evaluated?: number;
+  /** まだ動いている最中か */
+  live?: boolean;
 }
 
-export function AgentTrace({ trace, engine, model, evaluated }: Props) {
-  if (trace.length === 0) return null;
+export function AgentTrace({ trace, engine, model, evaluated, live = false }: Props) {
+  if (trace.length === 0 && !live) return null;
 
   return (
-    <details className="panel trace" open>
+    <details className={`panel trace${live ? " trace--live" : ""}`} open>
       <summary className="trace__summary">
         <span className="trace__title">
-          {engine === "agent" ? "エージェントの検討過程" : "候補の生成"}
+          {live
+            ? "検討中"
+            : engine === "agent"
+              ? "エージェントの検討過程"
+              : "候補の生成"}
         </span>
         <span className="trace__meta">
-          {model ?? "rule-based"} · {evaluated.toLocaleString("ja-JP")} 通りを検証
+          {live
+            ? `${trace.length} 手目`
+            : `${model ?? "rule-based"} · ${(evaluated ?? 0).toLocaleString("ja-JP")} 通りを検証`}
         </span>
       </summary>
       <div className="trace__list">
+        {trace.length === 0 && (
+          <div className="trace__row trace__row--info">
+            <span className="trace__no trace__no--pulse" />
+            <div>
+              <span className="trace__label">構造と材料を読み込んでいます…</span>
+            </div>
+          </div>
+        )}
         {trace.map((entry) => {
           const verdict = VERDICT_LABEL[entry.outcome];
           return (
@@ -70,6 +86,14 @@ export function AgentTrace({ trace, engine, model, evaluated }: Props) {
             </div>
           );
         })}
+        {live && trace.length > 0 && (
+          <div className="trace__row trace__row--info trace__row--pending">
+            <span className="trace__no trace__no--pulse" />
+            <div>
+              <span className="trace__label">次の手を考えています…</span>
+            </div>
+          </div>
+        )}
       </div>
     </details>
   );

@@ -1,4 +1,5 @@
 import { useState } from "react";
+import type { AgentTraceEntry } from "./api/types.ts";
 import type { DesignRun } from "./lib/runDesign.ts";
 import { runDesign } from "./lib/runDesign.ts";
 import type { FormState } from "./components/InputForm.tsx";
@@ -13,6 +14,7 @@ export default function App() {
   const [run, setRun] = useState<DesignRun | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [liveTrace, setLiveTrace] = useState<AgentTraceEntry[]>([]);
   const [error, setError] = useState<string | null>(null);
 
   const selected = run?.designs.find((d) => d.candidate.id === selectedId) ?? null;
@@ -20,17 +22,23 @@ export default function App() {
   const design = async () => {
     setBusy(true);
     setError(null);
+    setLiveTrace([]);
+    setRun(null);
     try {
-      const next = await runDesign({
-        intent: form.intent,
-        dimensions: { width: form.width, height: form.height, depth: form.depth },
-        stock: form.stock.map((s) => ({
-          materialId: s.materialId,
-          length: s.length,
-          quantity: s.quantity,
-        })),
-        kerf: form.kerf,
-      });
+      const next = await runDesign(
+        {
+          intent: form.intent,
+          dimensions: { width: form.width, height: form.height, depth: form.depth },
+          stock: form.stock.map((s) => ({
+            materialId: s.materialId,
+            length: s.length,
+            quantity: s.quantity,
+          })),
+          kerf: form.kerf,
+        },
+        // 足跡が届くたびに画面へ足す。20 秒以上の沈黙を作らない。
+        (entry) => setLiveTrace((prev) => [...prev, entry]),
+      );
       setRun(next);
       setSelectedId(next.designs[0]?.candidate.id ?? null);
     } catch (e) {
@@ -70,12 +78,12 @@ export default function App() {
             </div>
           )}
 
-          {run === null ? (
+          {busy ? (
+            <AgentTrace trace={liveTrace} live />
+          ) : run === null ? (
             <div className="panel">
               <p className="empty">
-                {busy
-                  ? "エージェントが構造を検討しています…"
-                  : "寸法を入れて「設計する」を押すと、作れる構造の候補が出ます。"}
+                寸法を入れて「設計する」を押すと、作れる構造の候補が出ます。
               </p>
             </div>
           ) : (

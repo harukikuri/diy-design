@@ -42,10 +42,27 @@ export interface ToolCollector {
   notes: string[];
   /** 同じ案を二度評価させないための記憶 */
   seen: Map<string, unknown>;
+  /** 足跡が増えるたびに呼ばれる。進行中の画面へ流すために使う。 */
+  onTrace?: (entry: AgentTraceEntry) => void;
 }
 
-export function createCollector(): ToolCollector {
-  return { trace: [], evaluated: 0, directEvaluations: 0, submitted: null, notes: [], seen: new Map() };
+export function createCollector(onTrace?: (entry: AgentTraceEntry) => void): ToolCollector {
+  return {
+    trace: [],
+    evaluated: 0,
+    directEvaluations: 0,
+    submitted: null,
+    notes: [],
+    seen: new Map(),
+    onTrace,
+  };
+}
+
+/** 足跡を1つ積み、購読者がいればその場で流す。 */
+function record(collector: ToolCollector, entry: Omit<AgentTraceEntry, "step">): void {
+  const full: AgentTraceEntry = { ...entry, step: collector.trace.length + 1 };
+  collector.trace.push(full);
+  collector.onTrace?.(full);
 }
 
 const proposalKey = (p: DesignProposalInput) =>
@@ -75,8 +92,7 @@ export function createTools(
     description:
       "作れる構造の一覧と、それぞれの適用寸法範囲・段数の範囲・角材を使うか・構造上の安定性を返す。設計を始める前に必ず一度呼ぶこと。",
     execute: () => {
-      collector.trace.push({
-        step: collector.trace.length + 1,
+      record(collector, {
         tool: "list_structures",
         label: "作れる構造の一覧を確認",
         outcome: "info",
@@ -100,8 +116,7 @@ export function createTools(
     description:
       "材料カタログ (断面寸法・定尺・参考価格) と、ユーザーが既に持っている材料を返す。",
     execute: () => {
-      collector.trace.push({
-        step: collector.trace.length + 1,
+      record(collector, {
         tool: "list_materials",
         label: "材料カタログと手持ち材を確認",
         outcome: "info",
@@ -154,8 +169,7 @@ export function createTools(
       collector.seen.set(key, summary);
       collector.evaluated += 1;
       collector.directEvaluations += 1;
-      collector.trace.push({
-        step: collector.trace.length + 1,
+      record(collector, {
         tool: "evaluate_design",
         label: `${summary.structure} / ${summary.shelfCount}段 / ${summary.materials.frame} + ${summary.materials.panel}`,
         outcome: summary.ok ? "ok" : "rejected",
@@ -242,8 +256,7 @@ export function createTools(
                 (b.panelThickness as number) > (a.panelThickness as number)),
           ),
       );
-      collector.trace.push({
-        step: collector.trace.length + 1,
+      record(collector, {
         tool: "compare_options",
         label: `${compiler.label}: ${rows.length} 通りを比較`,
         outcome: "info",
@@ -323,8 +336,7 @@ export function createTools(
 
       collector.submitted = parsed.designs;
       collector.notes = parsed.notes ?? [];
-      collector.trace.push({
-        step: collector.trace.length + 1,
+      record(collector, {
         tool: "submit_designs",
         label: `候補を ${parsed.designs.length} 件に絞り込み`,
         outcome: "ok",

@@ -378,6 +378,14 @@ select {
   color: #fff;
 }
 
+/* .btn:disabled の淡い文字色を継ぐと、ターコイズ地の上で読めなくなる */
+.btn--primary:disabled {
+  background: var(--teal);
+  border-color: var(--teal);
+  color: #fff;
+  opacity: 0.75;
+}
+
 .btn--ghost {
   padding: 4px 8px;
   border-color: transparent;
@@ -1370,4 +1378,135 @@ select {
 
 .render__foot {
   padding: 12px 16px;
+}
+
+/* --------------------------------------------------------------------------
+ * 動き
+ *
+ * 目的は装飾ではなく、状態が変わったことを body で分かるようにすること。
+ * エージェントは 20 秒以上動くので、その間に何が起きているかを見せる。
+ * prefers-reduced-motion は末尾のブロックで一括して無効化する。
+ * -------------------------------------------------------------------------- */
+
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes pulse {
+  0%,
+  100% {
+    opacity: 0.3;
+    transform: scale(0.8);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes sweep {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: translateX(300%);
+  }
+}
+
+/* --- 検討中 --------------------------------------------------------------- */
+
+.trace--live .trace__summary {
+  position: relative;
+  overflow: hidden;
+}
+
+/* 進捗の目盛りが右へ流れる。スケールの語彙をそのまま動きに使う。 */
+.trace--live .trace__summary::after {
+  content: "";
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 25%;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, var(--teal), transparent);
+  animation: sweep 1.6s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+.trace__no--pulse {
+  background: var(--teal);
+  animation: pulse 1.4s ease-in-out infinite;
+}
+
+.trace__row--pending .trace__label {
+  color: var(--ink-3);
+}
+
+.trace__list > .trace__row {
+  animation: rise 0.3s cubic-bezier(0.2, 0.7, 0.3, 1) both;
+}
+
+/* --- 候補の登場 ------------------------------------------------------------ */
+
+.cards > .card {
+  animation: rise 0.4s cubic-bezier(0.2, 0.7, 0.3, 1) both;
+  animation-delay: calc(var(--i, 0) * 70ms);
+}
+
+.section {
+  animation: rise 0.35s cubic-bezier(0.2, 0.7, 0.3, 1) both;
+}
+
+/* --- 手触り --------------------------------------------------------------- */
+
+.card:hover {
+  transform: translateY(-2px);
+}
+
+.card:active {
+  transform: translateY(0);
+}
+
+.btn:active:not(:disabled),
+.chip:active {
+  transform: translateY(1px);
+}
+
+.btn--primary {
+  box-shadow: 0 1px 2px rgb(7 107 101 / 24%);
+}
+
+.btn--primary:hover:not(:disabled) {
+  box-shadow: 0 2px 10px -2px rgb(7 107 101 / 40%);
+}
+
+.tab {
+  position: relative;
+}
+
+/* タブの下線を伸ばして出す */
+.tab::after {
+  content: "";
+  position: absolute;
+  right: 0;
+  bottom: -1px;
+  left: 0;
+  height: 2px;
+  background: var(--teal);
+  transform: scaleX(0);
+  transition: transform 0.2s cubic-bezier(0.2, 0.7, 0.3, 1);
+}
+
+.tab[aria-selected="true"] {
+  border-bottom-color: transparent;
+}
+
+.tab[aria-selected="true"]::after {
+  transform: scaleX(1);
 }

@@ -1,4 +1,4 @@
-import { requestDesign } from "../api/client.ts";
+import { streamDesign } from "../api/client.ts";
 import type { AgentTraceEntry, DesignRequestBody } from "../api/types.ts";
 import { createStock } from "../core/materials.ts";
 import type { CompiledDesign } from "../core/pipeline.ts";
@@ -19,8 +19,11 @@ export interface DesignRun {
   evaluated: number;
 }
 
-export async function runDesign(body: DesignRequestBody): Promise<DesignRun> {
-  const response = await requestDesign(body);
+export async function runDesign(
+  body: DesignRequestBody,
+  onTrace: (entry: AgentTraceEntry) => void = () => {},
+): Promise<DesignRun> {
+  const response = await streamDesign(body, onTrace);
   const ownedStock = body.stock.map((s) =>
     createStock(s.materialId, s.length, s.quantity, true),
   );

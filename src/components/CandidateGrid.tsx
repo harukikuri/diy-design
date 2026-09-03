@@ -1,3 +1,4 @@
+import type { CSSProperties } from "react";
 import type { CompiledDesign } from "../core/pipeline.ts";
 import { Elevation } from "./Elevation.tsx";
 
@@ -40,6 +41,7 @@ export function CandidateGrid({ designs, selectedId, onSelect }: Props) {
               .join(" ")}
             onClick={() => onSelect(candidate.id)}
             aria-pressed={candidate.id === selectedId}
+            style={{ "--i": i } as CSSProperties}
           >
             <div className="card__thumb">
               {model.parts.length > 0 ? (
