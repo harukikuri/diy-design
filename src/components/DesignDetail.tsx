@@ -32,8 +32,22 @@ export function DesignDetail({ design }: Props) {
     design.model.parts.map((p) => [ROLE_LABEL[p.role], ROLE_COLOR[p.role]]),
   )];
 
+  const rank = (level: string) => (level === "error" ? 0 : 1);
+  const issues = [...design.issues].sort((a, b) => rank(a.level) - rank(b.level));
+
   return (
     <div className="panel">
+      {issues.length > 0 && (
+        <div className="panel__body" style={{ paddingBottom: 0 }}>
+          {issues.map((issue) => (
+            <div className={`notice notice--${issue.level}`} key={issue.code}>
+              <span className="notice__mark">{issue.level === "error" ? "!" : "△"}</span>
+              <span>{issue.message}</span>
+            </div>
+          ))}
+        </div>
+      )}
+
       <div className="tabs" role="tablist">
         {TABS.map((t) => (
           <button
