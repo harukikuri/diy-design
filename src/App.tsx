@@ -6,6 +6,7 @@ import type { FormState } from "./components/InputForm.tsx";
 import { InputForm, initialForm } from "./components/InputForm.tsx";
 import { AgentTrace } from "./components/AgentTrace.tsx";
 import { CandidateGrid } from "./components/CandidateGrid.tsx";
+import { EmptyStage } from "./components/EmptyStage.tsx";
 import { DesignDetail } from "./components/DesignDetail.tsx";
 import { Scale, STANDARD_SPAN } from "./components/Scale.tsx";
 
@@ -81,11 +82,7 @@ export default function App() {
           {busy ? (
             <AgentTrace trace={liveTrace} live />
           ) : run === null ? (
-            <div className="panel">
-              <p className="empty">
-                寸法を入れて「設計する」を押すと、作れる構造の候補が出ます。
-              </p>
-            </div>
+            <EmptyStage />
           ) : (
             <>
               <AgentTrace

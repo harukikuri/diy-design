@@ -63,9 +63,9 @@ export function Elevation({ parts, bounds, view = "front", highlight, visible }:
             width={w}
             height={ht}
             fill={ROLE_COLOR[part.role]}
-            fillOpacity={faded ? 0.16 : 0.92}
-            stroke="#16191c"
-            strokeOpacity={faded ? 0.15 : 0.55}
+            fillOpacity={faded ? 0.18 : 0.95}
+            stroke="#e8eeee"
+            strokeOpacity={faded ? 0.12 : 0.3}
             strokeWidth={1}
             vectorEffect="non-scaling-stroke"
           >

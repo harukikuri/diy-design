@@ -3,17 +3,19 @@ import type { StructuralRole } from "../core/domain.ts";
 /**
  * 部材の色。2D 正面図と 3D ビューで同じ色を使い、
  * 「図面で見た部材」と「3Dで見た部材」が同じものだと分かるようにする。
+ *
+ * 図面と 3D は暗い面に描くので、そこで沈まない明度に取ってある。
  */
 export const ROLE_COLOR: Record<StructuralRole, string> = {
-  post: "#0b8c84",
-  rail_x: "#4fa9a3",
-  rail_z: "#3d9b95",
-  ledger: "#0b8c84",
-  cleat: "#4fa9a3",
-  shelf_panel: "#cbb994",
-  side_panel: "#b9a47c",
-  top_panel: "#c2ad86",
-  bottom_panel: "#c2ad86",
+  post: "#12a79d",
+  rail_x: "#5cc0b8",
+  rail_z: "#49b3aa",
+  ledger: "#12a79d",
+  cleat: "#5cc0b8",
+  shelf_panel: "#d8c6a2",
+  side_panel: "#c6b189",
+  top_panel: "#cfba93",
+  bottom_panel: "#cfba93",
 };
 
 export const ROLE_LABEL: Record<StructuralRole, string> = {

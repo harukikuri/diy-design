@@ -29,10 +29,24 @@
   --sans: "Zen Kaku Gothic New", system-ui, sans-serif;
   --mono: "M PLUS 1 Code", ui-monospace, "SFMono-Regular", monospace;
 
+  /*
+   * ビューポート。3D と図面が乗る面は暗くする。
+   * CAD や 3D ソフトと同じで、部材の色が沈まず、寸法線が読みやすい。
+   * 部品表や木取り図は「書類」なので明るいまま残し、役割で塗り分ける。
+   */
+  --viewport: #151b1d;
+  --viewport-2: #1e2629;
+  --viewport-line: #2c373a;
+  --viewport-ink: #b9c6c8;
+  --viewport-ink-2: #7d8d90;
+
   --r-sm: 2px;
   --r-md: 4px;
 
-  --shadow: 0 1px 2px rgb(22 25 28 / 6%), 0 8px 24px -16px rgb(22 25 28 / 24%);
+  --shadow-1: 0 1px 2px rgb(22 25 28 / 5%);
+  --shadow-2: 0 1px 2px rgb(22 25 28 / 5%), 0 4px 12px -6px rgb(22 25 28 / 14%);
+  --shadow-3: 0 2px 4px rgb(22 25 28 / 6%), 0 16px 32px -18px rgb(22 25 28 / 30%);
+  --shadow: var(--shadow-2);
 }
 
 *,
@@ -173,14 +187,15 @@ select {
   display: flex;
   flex-wrap: wrap;
   align-items: baseline;
-  gap: 8px 20px;
-  padding: 18px 24px 10px;
+  gap: 6px 22px;
+  padding: 30px 24px 14px;
 }
 
 .masthead__title {
-  font-size: 21px;
+  font-size: clamp(28px, 3.4vw, 42px);
   font-weight: 900;
-  letter-spacing: -0.01em;
+  line-height: 1.05;
+  letter-spacing: -0.035em;
 }
 
 .masthead__title span {
@@ -189,7 +204,8 @@ select {
 
 .masthead__tagline {
   color: var(--ink-2);
-  font-size: 13px;
+  font-size: 14px;
+  letter-spacing: 0.01em;
 }
 
 .masthead__scale {
@@ -236,6 +252,7 @@ select {
   background: var(--surface);
   border: 1px solid var(--line);
   border-radius: var(--r-md);
+  box-shadow: var(--shadow-1);
 }
 
 .panel__head {
@@ -265,8 +282,9 @@ select {
 }
 
 .section-head h2 {
-  font-size: 17px;
-  font-weight: 700;
+  font-size: 22px;
+  font-weight: 900;
+  letter-spacing: -0.02em;
 }
 
 /* --------------------------------------------------------------------------
@@ -588,7 +606,7 @@ select {
 .cards {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
-  gap: 14px;
+  gap: 18px;
 }
 
 .card {
@@ -606,12 +624,12 @@ select {
 
 .card:hover {
   border-color: var(--line-strong);
-  box-shadow: var(--shadow);
+  box-shadow: var(--shadow-3);
 }
 
 .card--selected {
   border-color: var(--teal);
-  box-shadow: 0 0 0 1px var(--teal);
+  box-shadow: 0 0 0 1px var(--teal), var(--shadow-2);
 }
 
 .card--blocked {
@@ -625,7 +643,9 @@ select {
   align-items: center;
   justify-content: center;
   aspect-ratio: 4 / 5;
-  background: var(--surface-sunk);
+  /* 中央がわずかに明るい暗面。部材が浮き、視線が中央へ寄る。 */
+  background:
+    radial-gradient(120% 90% at 50% 38%, var(--viewport-2), var(--viewport) 72%);
   border-bottom: 1px solid var(--line);
 }
 
@@ -650,8 +670,9 @@ select {
   align-items: baseline;
   justify-content: space-between;
   gap: 8px;
-  font-size: 15px;
-  font-weight: 700;
+  font-size: 17px;
+  font-weight: 900;
+  letter-spacing: -0.015em;
 }
 
 .card__rank {
@@ -771,8 +792,8 @@ select {
 
 .viewer {
   position: relative;
-  height: min(62vh, 560px);
-  background: var(--surface-sunk);
+  height: min(64vh, 600px);
+  background: var(--viewport);
   border-bottom: 1px solid var(--line);
 }
 
@@ -810,7 +831,7 @@ select {
 .legend__swatch {
   width: 10px;
   height: 10px;
-  border: 1px solid rgb(22 25 28 / 25%);
+  border: 1px solid rgb(22 25 28 / 22%);
   border-radius: 1px;
 }
 
@@ -831,9 +852,10 @@ select {
 
 .views__figure {
   position: relative;
-  height: 260px;
-  background: var(--surface-sunk);
-  border-radius: var(--r-sm);
+  height: 280px;
+  background:
+    radial-gradient(120% 90% at 50% 45%, var(--viewport-2), var(--viewport) 75%);
+  border-radius: var(--r-md);
 }
 
 .views__figure > .elevation {
@@ -1059,8 +1081,8 @@ select {
 }
 
 .manual__stage {
-  height: min(58vh, 520px);
-  background: var(--surface-sunk);
+  height: min(60vh, 560px);
+  background: var(--viewport);
   border-right: 1px solid var(--line);
 }
 
@@ -1355,7 +1377,7 @@ select {
 .render__body {
   position: relative;
   aspect-ratio: 1 / 1;
-  background: var(--surface-sunk);
+  background: var(--viewport);
 }
 
 .render__body img {
@@ -1509,4 +1531,86 @@ select {
 
 .tab[aria-selected="true"]::after {
   transform: scaleX(1);
+}
+
+/* --------------------------------------------------------------------------
+ * 開始画面
+ * -------------------------------------------------------------------------- */
+
+.opening {
+  overflow: hidden;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  box-shadow: var(--shadow-1);
+}
+
+.opening__lede {
+  padding: 30px 26px 24px;
+}
+
+.opening__thesis {
+  font-size: clamp(22px, 2.4vw, 30px);
+  font-weight: 900;
+  line-height: 1.35;
+  letter-spacing: -0.025em;
+}
+
+.opening__thesis b {
+  color: var(--teal);
+}
+
+.opening__sub {
+  max-width: 46em;
+  margin-top: 10px;
+  color: var(--ink-2);
+  font-size: 13px;
+  line-height: 1.8;
+}
+
+.opening__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  gap: 1px;
+  background: var(--line);
+  border-top: 1px solid var(--line);
+}
+
+.opening__item {
+  display: flex;
+  flex-direction: column;
+  background: var(--surface);
+  animation: rise 0.45s cubic-bezier(0.2, 0.7, 0.3, 1) both;
+}
+
+.opening__figure {
+  position: relative;
+  height: 230px;
+  background:
+    radial-gradient(120% 90% at 50% 42%, var(--viewport-2), var(--viewport) 74%);
+}
+
+.opening__figure > .elevation {
+  position: absolute;
+  top: 22px;
+  left: 22px;
+  width: calc(100% - 44px);
+  height: calc(100% - 44px);
+}
+
+.opening__item figcaption {
+  display: grid;
+  gap: 4px;
+  padding: 14px 16px 18px;
+}
+
+.opening__item figcaption b {
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.opening__item figcaption span {
+  color: var(--ink-2);
+  font-size: 12px;
+  line-height: 1.7;
 }
