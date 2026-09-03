@@ -1,6 +1,6 @@
 import type { Connection, Part, PhysicalModel } from "../domain.ts";
 import { vec3 } from "../domain.ts";
-import { screwSpec } from "./fasteners.ts";
+import { screwSpec, spread } from "./fasteners.ts";
 import type { CompileInput, StructureCompiler } from "./types.ts";
 
 /**
@@ -39,7 +39,6 @@ function compile({ dimensions, params, panel }: CompileInput): PhysicalModel {
   }
 
   const innerWidth = W - 2 * t;
-  const sideX = { L: t / 2, R: W - t / 2 };
 
   /** 側板の間に水平に渡す板を1枚追加し、左右の側板への接続も張る。 */
   const addHorizontal = (
@@ -59,9 +58,9 @@ function compile({ dimensions, params, panel }: CompileInput): PhysicalModel {
       cut: { kind: "panel", width: innerWidth, length: D, thickness: t },
       group,
     });
-    for (const [key, x] of [
-      ["L", sideX.L],
-      ["R", sideX.R],
+    for (const [key, label, outward, into] of [
+      ["L", "左", 0, 1],
+      ["R", "右", W, -1],
     ] as const) {
       connections.push({
         id: `c_${id}_${key}`,
@@ -69,8 +68,11 @@ function compile({ dimensions, params, panel }: CompileInput): PhysicalModel {
         toPartId: id,
         fastener: "screw",
         spec: screw,
-        count: 3,
-        at: vec3(x, centerY, D / 2),
+        method: "through",
+        // 側板の外側の面から板厚を貫いて、水平材の木口へ打つ。奥行方向に3本。
+        points: spread(3, 0, D).map((z) => vec3(outward, centerY, z)),
+        drive: vec3(into, 0, 0),
+        face: `${label}の側板の外側から打つ`,
         group,
       });
     }

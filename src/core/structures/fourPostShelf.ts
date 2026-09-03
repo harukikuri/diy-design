@@ -1,6 +1,6 @@
 import type { Connection, Part, PhysicalModel } from "../domain.ts";
 import { vec3 } from "../domain.ts";
-import { screwSpec } from "./fasteners.ts";
+import { POCKET_SCREW, screwSpec, spread } from "./fasteners.ts";
 import type { CompileInput, StructureCompiler } from "./types.ts";
 import { shelfLevels } from "./types.ts";
 
@@ -72,18 +72,24 @@ function compile({ dimensions, params, frame, panel }: CompileInput): PhysicalMo
         cut: { kind: "linear", length: railLenZ },
         group: side.group,
       });
-      for (const [zKey, z] of [
-        ["F", w],
-        ["B", D - w],
+      for (const [zKey, z, into] of [
+        ["F", w, -1],
+        ["B", D - w, 1],
       ] as const) {
         connections.push({
           id: `c_${id}_${zKey}`,
           fromPartId: id,
           toPartId: `post_${side.key}${zKey}`,
           fastener: "screw",
-          spec: frameScrew,
-          count: 2,
-          at: vec3(side.x, railCenterY, z),
+          spec: POCKET_SCREW,
+          method: "pocket",
+          // 横架材の内向きの面 (フレームの内側) から、木口の先の支柱へ斜めに打つ。
+          // 頭は接合面から少し離れた横架材の面に来る。
+          points: spread(2, railCenterY - frame.width / 2, railCenterY + frame.width / 2).map(
+            (y) => vec3(side.key === "L" ? t : W - t, y, z - into * 35),
+          ),
+          drive: vec3(side.key === "L" ? -0.6 : 0.6, 0, into * 0.8),
+          face: `横架材の${side.label === "左" ? "右" : "左"}面から、支柱へ斜めに打つ`,
           group: side.group,
         });
       }
@@ -106,14 +112,20 @@ function compile({ dimensions, params, frame, panel }: CompileInput): PhysicalMo
         group: "connect",
       });
       for (const side of sides) {
+        const outward = side.key === "L" ? 0 : W; // 支柱の外側の面
         connections.push({
           id: `c_${id}_${side.key}`,
           fromPartId: id,
           toPartId: `post_${side.key}${xKey}`,
           fastener: "screw",
           spec: frameScrew,
-          count: 2,
-          at: vec3(side.x, railCenterY, z),
+          method: "through",
+          // 支柱の外側の面から、38mm を貫いて横架材の木口へ打つ。
+          points: spread(2, railCenterY - frame.width / 2, railCenterY + frame.width / 2).map(
+            (y) => vec3(outward, y, z),
+          ),
+          drive: vec3(side.key === "L" ? 1 : -1, 0, 0),
+          face: `${side.label}の支柱の外側から打つ`,
           group: "connect",
         });
       }
@@ -141,8 +153,11 @@ function compile({ dimensions, params, frame, panel }: CompileInput): PhysicalMo
         toPartId: `railx_${xKey}_${n}`,
         fastener: "screw",
         spec: panelScrew,
-        count: 3,
-        at: vec3(W / 2, levelY - pt / 2, z),
+        method: "through",
+        // 棚板の上面から横架材へ打つ。横架材が張る範囲 (支柱の内側) に3本。
+        points: spread(3, t, W - t).map((x) => vec3(x, levelY, z)),
+        drive: vec3(0, -1, 0),
+        face: "棚板の上から真下へ打つ",
         group: "panels",
       });
     }

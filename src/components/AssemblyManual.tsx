@@ -73,6 +73,7 @@ export function AssemblyManual({ design }: Props) {
             model={design.model}
             visible={step.cumulativePartIds}
             highlight={step.partIds}
+            fastenings={step.connectionIds}
             showWall={step.touchesWall || undefined}
           />
         </div>
@@ -112,6 +113,22 @@ export function AssemblyManual({ design }: Props) {
                   <FastenerIcon type={f.fastener} />
                   <span className="fastener__spec">{f.spec}</span>
                   <span className="fastener__count">×{f.count}</span>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {step.joints.length > 0 && (
+            <div className="kit">
+              <span className="kit__label">留め方</span>
+              {step.joints.map((j) => (
+                <div className={`joint joint--${j.method}`} key={`${j.method}${j.face}`}>
+                  <span className="joint__method">{j.methodLabel}</span>
+                  <p className="joint__face">{j.face}</p>
+                  <p className="joint__spec">
+                    <span className="num">{j.spec}</span> を{" "}
+                    <span className="num">{j.count}</span> 本
+                  </p>
                 </div>
               ))}
             </div>

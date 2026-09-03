@@ -1899,3 +1899,46 @@ select {
 .stock-row .input {
   font-size: 12px;
 }
+
+/* --- 留め方 --------------------------------------------------------------- */
+
+.joint {
+  padding: 10px 12px;
+  background: var(--surface-sunk);
+  border-left: 3px solid var(--line-strong);
+  border-radius: 0 var(--r-sm) var(--r-sm) 0;
+}
+
+.joint + .joint {
+  margin-top: 6px;
+}
+
+/* 斜め打ちは道具も手順も違うので、ひと目で区別できるようにする */
+.joint--pocket {
+  background: var(--amber-wash);
+  border-left-color: var(--amber);
+}
+
+.joint--anchor,
+.joint--bracket {
+  background: var(--teal-wash);
+  border-left-color: var(--teal);
+}
+
+.joint__method {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--ink-2);
+}
+
+.joint__face {
+  margin-top: 2px;
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.joint__spec {
+  margin-top: 3px;
+  font-size: 12px;
+  color: var(--ink-2);
+}

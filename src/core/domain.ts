@@ -92,6 +92,24 @@ export type CutSpec =
 export type FastenerType = "screw" | "bolt" | "bracket" | "glue";
 
 /**
+ * 留め方。どの面から、どう打つか。
+ *
+ * - through : 一方の材を貫いて相手材へ真っ直ぐ打つ。貫通厚がねじ長を決める。
+ * - pocket  : 木口の突き付けを斜めに打つ (ポケットホール)。
+ *             支柱の 89mm 面へ突き付けた横架材のように、貫通では届かない接合で使う。
+ * - anchor  : 壁の下地へ打つ。
+ * - bracket : L字金具などの金物で受ける。
+ */
+export type JointMethod = "through" | "pocket" | "anchor" | "bracket";
+
+export const JOINT_LABEL: Record<JointMethod, string> = {
+  through: "貫通ねじ",
+  pocket: "斜め打ち (ポケットホール)",
+  anchor: "壁下地へ固定",
+  bracket: "金具で受ける",
+};
+
+/**
  * 壁など、製作物に含まれない取付面を指す擬似 Part ID。
  * Connection の接続先としてのみ使い、部品表・木取りには現れない。
  */
@@ -104,9 +122,21 @@ export interface Connection {
   fastener: FastenerType;
   /** 「65mm 木ねじ」のような具体的な仕様 */
   spec: string;
-  count: number;
-  /** 接続位置の代表点 */
-  at: Vec3;
+  /**
+   * 実際に留める位置。1点につき金物1個で、座標は「ねじ頭が来る面」を指す。
+   *
+   * 代表点1つと本数を別々に持つと、部品表の本数と図の点が食い違い、
+   * その通りに作ると間隔も本数も違うものができる。位置の配列を唯一の情報源にする。
+   * 接合面に置くと「板と板の隙間に浮いたねじ」になり、どちらの面から打つのか
+   * 伝わらないので、必ず作業する側の面に置く。
+   */
+  points: Vec3[];
+  /** 留め方 */
+  method: JointMethod;
+  /** 打ち込む向き (単位ベクトル)。ねじ頭から材の内側へ向かう。 */
+  drive: Vec3;
+  /** 作業する側の面を指示する一言 */
+  face: string;
   group: string;
 }
 

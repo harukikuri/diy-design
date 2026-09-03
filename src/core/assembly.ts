@@ -1,5 +1,5 @@
-import type { Connection, FastenerType, PhysicalModel } from "./domain.ts";
-import { WALL_ANCHOR } from "./domain.ts";
+import type { Connection, FastenerType, JointMethod, PhysicalModel } from "./domain.ts";
+import { JOINT_LABEL, WALL_ANCHOR } from "./domain.ts";
 import type { StructureCompiler } from "./structures/index.ts";
 
 /**
@@ -17,6 +17,34 @@ export interface FastenerLine {
   count: number;
 }
 
+/** そのステップでの留め方。どの面から、どう打つか。 */
+export interface JointLine {
+  method: JointMethod;
+  methodLabel: string;
+  spec: string;
+  face: string;
+  count: number;
+}
+
+/** 留め方が同じものはまとめる。手順に並べる粒度はここで決まる。 */
+function aggregateJoints(connections: Connection[]): JointLine[] {
+  const map = new Map<string, JointLine>();
+  for (const c of connections) {
+    const key = `${c.method}|${c.spec}|${c.face}`;
+    const line = map.get(key);
+    if (line) line.count += c.points.length;
+    else
+      map.set(key, {
+        method: c.method,
+        methodLabel: JOINT_LABEL[c.method],
+        spec: c.spec,
+        face: c.face,
+        count: c.points.length,
+      });
+  }
+  return [...map.values()].sort((a, b) => b.count - a.count);
+}
+
 export interface AssemblyStep {
   index: number;
   title: string;
@@ -25,6 +53,8 @@ export interface AssemblyStep {
   partIds: string[];
   connectionIds: string[];
   fasteners: FastenerLine[];
+  /** 留め方の内訳。「どこに打つか」だけでなく「どう打つか」を示す。 */
+  joints: JointLine[];
   /** このステップ完了時点で組み上がっている部材すべて */
   cumulativePartIds: string[];
   /** 壁への固定を含むステップか */
@@ -34,9 +64,10 @@ export interface AssemblyStep {
 function aggregateFasteners(connections: Connection[]): FastenerLine[] {
   const map = new Map<string, FastenerLine>();
   for (const c of connections) {
+    // 本数は留め位置の数そのもの。図に出る点と部品表の数が必ず一致する。
     const line = map.get(c.spec);
-    if (line) line.count += c.count;
-    else map.set(c.spec, { fastener: c.fastener, spec: c.spec, count: c.count });
+    if (line) line.count += c.points.length;
+    else map.set(c.spec, { fastener: c.fastener, spec: c.spec, count: c.points.length });
   }
   return [...map.values()].sort((a, b) => b.count - a.count);
 }
@@ -58,6 +89,7 @@ export function planAssembly(model: PhysicalModel, compiler: StructureCompiler):
       partIds: parts.map((p) => p.id),
       connectionIds: connections.map((c) => c.id),
       fasteners: aggregateFasteners(connections),
+      joints: aggregateJoints(connections),
       cumulativePartIds: [...cumulative],
       touchesWall: connections.some((c) => c.toPartId === WALL_ANCHOR),
     });

@@ -1,6 +1,6 @@
 import type { Connection, Part, PhysicalModel } from "../domain.ts";
 import { vec3, WALL_ANCHOR } from "../domain.ts";
-import { screwSpec } from "./fasteners.ts";
+import { screwSpec, spread } from "./fasteners.ts";
 import type { CompileInput, StructureCompiler } from "./types.ts";
 import { shelfLevels } from "./types.ts";
 
@@ -47,8 +47,13 @@ function compile({ dimensions, params, frame, panel }: CompileInput): PhysicalMo
       toPartId: WALL_ANCHOR,
       fastener: "screw",
       spec: "75mm 木ねじ (壁下地へ)",
-      count: Math.max(2, Math.ceil(W / 455)), // 455mm = 一般的な間柱ピッチ
-      at: vec3(W / 2, ledgerCenterY, D),
+      method: "anchor",
+      // 455mm = 一般的な間柱ピッチ。桟の手前の面から壁へ向けて打つ。
+      points: spread(Math.max(2, Math.ceil(W / 455)), 0, W).map((x) =>
+        vec3(x, ledgerCenterY, D - ft),
+      ),
+      drive: vec3(0, 0, 1),
+      face: "壁受け桟の手前から壁の下地へ打つ",
       group: "ledger",
     });
 
@@ -58,8 +63,12 @@ function compile({ dimensions, params, frame, panel }: CompileInput): PhysicalMo
       toPartId: WALL_ANCHOR,
       fastener: "bracket",
       spec: `L字棚受け金具 ${Math.round(D * 0.8)}mm`,
-      count: Math.max(2, Math.ceil(W / 600)),
-      at: vec3(W / 2, ledgerCenterY, D - ft),
+      method: "bracket",
+      points: spread(Math.max(2, Math.ceil(W / 600)), 0, W).map((x) =>
+        vec3(x, ledgerCenterY - fw / 2, D - ft),
+      ),
+      drive: vec3(0, 0, 1),
+      face: "壁受け桟の下に金具を当てて壁へ固定する",
       group: "brackets",
     });
 
@@ -79,8 +88,13 @@ function compile({ dimensions, params, frame, panel }: CompileInput): PhysicalMo
       toPartId: ledgerId,
       fastener: "screw",
       spec: screwSpec(pt),
-      count: Math.max(2, Math.ceil(W / 400)),
-      at: vec3(W / 2, levelY - pt / 2, D - ft / 2),
+      method: "through",
+      // 棚板の上面から壁受け桟へ打つ。
+      points: spread(Math.max(2, Math.ceil(W / 400)), 0, W).map((x) =>
+        vec3(x, levelY, D - ft / 2),
+      ),
+      drive: vec3(0, -1, 0),
+      face: "棚板の上から真下へ打つ",
       group: "panels",
     });
   });

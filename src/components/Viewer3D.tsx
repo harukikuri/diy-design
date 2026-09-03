@@ -1,8 +1,8 @@
 import { Canvas, useThree } from "@react-three/fiber";
 import { Grid, OrbitControls } from "@react-three/drei";
 import { useEffect, useMemo, useState } from "react";
-import { Vector3 } from "three";
-import type { Part, PhysicalModel } from "../core/domain.ts";
+import { Quaternion, Vector3 } from "three";
+import type { Connection, Part, PhysicalModel } from "../core/domain.ts";
 import { WALL_ANCHOR } from "../core/domain.ts";
 import { ROLE_COLOR } from "./partColors.ts";
 
@@ -17,6 +17,9 @@ const MM = 0.001; // mm → m
 
 /** 組み立て済みの部材の色。新しく付ける部材だけが色を持つ (§15.2)。 */
 const ASSEMBLED = "#55666a";
+
+/** 留める位置の印。部材のどの色とも被らない橙にする。 */
+const FASTENER = "#f0a04b";
 
 /** 現在のフレームを PNG として取り出せるようにする。 */
 function CaptureBridge({ onReady }: { onReady: (capture: () => string) => void }) {
@@ -68,6 +71,59 @@ interface Props {
    * 完成イメージ生成の参照画像に使う。
    */
   onCaptureReady?: (capture: () => string) => void;
+  /** 留める位置を光らせる接続の ID。組立手順で「どこにねじを打つか」を示す。 */
+  fastenings?: readonly string[];
+}
+
+const UP = new Vector3(0, 1, 0);
+
+/**
+ * 留める位置と向きの印。
+ *
+ * 位置だけの点にすると、板と板の隙間に何かが浮いているようにしか見えず、
+ * どちらの面から打つのかが伝わらない。頭を面の上に置き、打ち込む向きへ軸を
+ * 伸ばすことで「この面から、この向きに入れる」を図で示す。
+ * 実寸のねじは小さすぎて見えないため、視認できる大きさに誇張している。
+ */
+function FastenerMark({
+  at,
+  drive,
+  scale,
+}: {
+  at: [number, number, number];
+  drive: [number, number, number];
+  scale: number;
+}) {
+  const { position, quaternion, length } = useMemo(() => {
+    const dir = new Vector3(...drive).normalize();
+    const len = scale * 7;
+    return {
+      // 円柱は中心基準なので、頭から半分ぶん進めた位置に置く
+      position: new Vector3(...at).addScaledVector(dir, len / 2),
+      quaternion: new Quaternion().setFromUnitVectors(UP, dir),
+      length: len,
+    };
+  }, [at, drive, scale]);
+
+  return (
+    <group>
+      {/* 軸: 打ち込む向き */}
+      <mesh position={position} quaternion={quaternion}>
+        <cylinderGeometry args={[scale * 0.45, scale * 0.3, length, 10]} />
+        <meshBasicMaterial color={FASTENER} />
+      </mesh>
+      {/* 頭: 作業する面の側 */}
+      <mesh position={at}>
+        <sphereGeometry args={[scale, 14, 14]} />
+        <meshBasicMaterial color={FASTENER} />
+      </mesh>
+      {/* 材の裏に回っても位置が分かるよう、薄い輪を手前に重ねる */}
+      <mesh position={at} renderOrder={2}>
+        <sphereGeometry args={[scale * 1.7, 14, 14]} />
+        <meshBasicMaterial color={FASTENER} transparent opacity={0.2} depthTest={false} />
+      </mesh>
+    </group>
+  );
 }
 
 function PartMesh({
@@ -112,6 +168,7 @@ export function Viewer3D({
   exploded = 0,
   showWall,
   onCaptureReady,
+  fastenings,
 }: Props) {
   const { bounds, parts } = model;
   const center: [number, number, number] = [
@@ -124,6 +181,11 @@ export function Viewer3D({
   // 触るまではゆっくり回す。操作したら止めて、以降はユーザーに預ける。
   const [autoRotate, setAutoRotate] = useState(true);
   const wall = showWall ?? model.connections.some((c) => c.toPartId === WALL_ANCHOR);
+  const marks: Connection[] = fastenings
+    ? model.connections.filter((c) => fastenings.includes(c.id))
+    : [];
+  // 完成品の大きさに対して見える程度の印にする
+  const markScale = Math.max(0.008, span * 0.012);
 
   return (
     <Canvas
@@ -152,6 +214,17 @@ export function Viewer3D({
             faded={highlight !== undefined && !highlight.includes(part.id)}
           />
         ))}
+
+        {marks.flatMap((c) =>
+          c.points.map((at, i) => (
+            <FastenerMark
+              key={`${c.id}_${i}`}
+              scale={markScale}
+              at={[at.x * MM - center[0], at.y * MM, at.z * MM - center[2]]}
+              drive={[c.drive.x, c.drive.y, c.drive.z]}
+            />
+          )),
+        )}
 
         {wall && (
           <mesh
