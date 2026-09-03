@@ -4,7 +4,7 @@ import { createStock, getMaterial } from "../src/core/materials.ts";
 import type { ServerConfig } from "./config.ts";
 import { isAiEnabled } from "./config.ts";
 import type { DesignContext } from "./agent/context.ts";
-import { runDesignAgent, runRuleBased } from "./agent/designAgent.ts";
+import { AgentUnavailableError, runDesignAgent, runRuleBased } from "./agent/designAgent.ts";
 import { renderCompletionImage } from "./render.ts";
 
 /** リクエストボディを検証し、設計条件へ直す。 */
@@ -51,12 +51,11 @@ export function registerRoutes(app: Express, config: ServerConfig) {
     } catch (error) {
       // エージェントが失敗してもアプリを止めない。理由は notes でユーザーに見せる。
       console.error("[design] エージェント失敗:", error);
-      res.json(
-        await runRuleBased(
-          context,
-          `設計エージェントが応答しなかったため、ルールベースの候補を表示しています (${(error as Error).message})`,
-        ),
-      );
+      const reason =
+        error instanceof AgentUnavailableError
+          ? error.message
+          : `設計エージェントが応答しなかったため、ルールベースの候補を表示しています (${(error as Error).message})`;
+      res.json(await runRuleBased(context, reason));
     }
   });
 

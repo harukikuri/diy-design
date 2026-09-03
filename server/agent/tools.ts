@@ -39,13 +39,17 @@ export function createCollector(): ToolCollector {
 }
 
 const STRUCTURE_TYPES = STRUCTURES.map((s) => s.type) as [StructureType, ...StructureType[]];
-const MATERIAL_IDS = MATERIALS.map((m) => m.id) as [string, ...string[]];
+
+// 骨格には角材、面材には板材しか選べないようにする。
+// 角材を棚板に指定するような分類ミスは検証で弾けるが、往復が1回無駄になるので型で防ぐ。
+const idsOfKind = (kind: "lumber" | "board") =>
+  MATERIALS.filter((m) => m.kind === kind).map((m) => m.id) as [string, ...string[]];
 
 const proposalShape = {
   structureType: z.enum(STRUCTURE_TYPES).describe("構造の種類"),
   shelfCount: z.number().int().min(0).max(8).describe("段数 (箱型では中棚の枚数)"),
-  frameMaterialId: z.enum(MATERIAL_IDS).describe("骨格に使う角材の材料 ID"),
-  panelMaterialId: z.enum(MATERIAL_IDS).describe("面材に使う板材の材料 ID"),
+  frameMaterialId: z.enum(idsOfKind("lumber")).describe("骨格に使う角材の材料 ID"),
+  panelMaterialId: z.enum(idsOfKind("board")).describe("面材 (棚板・側板) に使う板材の材料 ID"),
 };
 
 export function createTools(context: DesignContext, collector: ToolCollector) {

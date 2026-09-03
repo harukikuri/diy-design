@@ -12,6 +12,10 @@ export interface ServerConfig {
   geminiApiKey: string | undefined;
   /** エージェントの推論に使うモデル */
   agentModel: string;
+  /** agentModel が高負荷などで使えないときに順に試すモデル */
+  fallbackModels: string[];
+  /** 一時エラー時に同じモデルで試す回数 */
+  retries: number;
   /** 完成イメージの生成に使うモデル (Nano Banana) */
   imageModel: string;
   /** 1リクエストあたりのエージェントの最大ツール呼び出し回数 */
@@ -25,6 +29,11 @@ export function loadConfig(): ServerConfig {
     port: Number(process.env.PORT ?? 8080),
     geminiApiKey: process.env.GEMINI_API_KEY?.trim() || undefined,
     agentModel: process.env.AGENT_MODEL ?? "gemini-3.8-flash",
+    fallbackModels: (process.env.FALLBACK_MODELS ?? "gemini-3.7-flash,gemini-3.5-flash")
+      .split(",")
+      .map((m) => m.trim())
+      .filter(Boolean),
+    retries: Number(process.env.AGENT_RETRIES ?? 1),
     imageModel: process.env.IMAGE_MODEL ?? "gemini-3.1-flash-image",
     maxToolCalls: Number(process.env.MAX_TOOL_CALLS ?? 16),
     staticDir: process.env.STATIC_DIR ?? "dist",

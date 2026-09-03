@@ -24,6 +24,50 @@ import { createCollector, createTools } from "./tools.ts";
 
 const APP_NAME = "diy-design-compiler";
 
+/**
+ * モデル側の失敗の扱いは 2 種類ある。
+ *
+ * - retry  : 一時的な混雑。少し待って同じモデルで試し直す価値がある。
+ * - switch : クォータ超過。待っても枠は戻らないので、即座に別のモデルへ移る。
+ *            (無料枠は概ねモデルごとに割り当てられるため、粘るより移った方が早い)
+ */
+const RETRYABLE_CODES = new Set(["500", "502", "503", "504"]);
+const QUOTA_CODES = new Set(["429"]);
+
+type FailureKind = "retry" | "switch" | "fatal";
+
+class ModelError extends Error {
+  readonly code: string;
+  readonly kind: FailureKind;
+  constructor(code: string, message: string) {
+    super(`${code}: ${message}`);
+    this.name = "ModelError";
+    this.code = code;
+    this.kind = RETRYABLE_CODES.has(code)
+      ? "retry"
+      : QUOTA_CODES.has(code)
+        ? "switch"
+        : "fatal";
+  }
+}
+
+/** 失敗の一覧から、ユーザーに出す短い理由を作る。 */
+function describeFailure(failures: { model: string; error: Error }[]): string {
+  const quota = failures.find((f) => f.error instanceof ModelError && f.error.code === "429");
+  if (quota) {
+    return "Gemini API の利用枠を使い切ったため、ルールベースの候補を表示しています";
+  }
+  const busy = failures.find(
+    (f) => f.error instanceof ModelError && (f.error as ModelError).kind === "retry",
+  );
+  if (busy) {
+    return "Gemini API が混雑していたため、ルールベースの候補を表示しています";
+  }
+  return `設計エージェントが応答しなかったため、ルールベースの候補を表示しています (${failures.at(0)?.error.message ?? "原因不明"})`;
+}
+
+const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
 const INSTRUCTION = `あなたは DIY の設計者です。ユーザーの要望・仕上がり寸法・手持ちの材料から、実際に製作可能な設計候補を 2〜3 件まとめます。
 
 ## 守ること
@@ -35,7 +79,8 @@ const INSTRUCTION = `あなたは DIY の設計者です。ユーザーの要望
 5. "warning" は作れるが注意が要る状態。採用してよいが、その内容を summary で必ず触れる。
 6. 手持ちの材料があるときは、それを使い切れる案を優先して検討する。
 7. 歩留まりが著しく低い (0.5 未満) 案は、材料や段数を変えて改善できないか一度は試す。
-8. 十分な案が揃ったら submit_designs を一度だけ呼んで終える。
+8. evaluate_design は同じターンでまとめて複数回呼んでよい。構造の異なる案は最初にまとめて評価し、往復を減らすこと。
+9. 十分な案が揃ったら submit_designs を一度だけ呼んで終える。
 
 ## できないこと
 
@@ -92,15 +137,17 @@ function toCandidates(submitted: SubmittedDesign[]): DesignCandidate[] {
   }));
 }
 
-export async function runDesignAgent(
+/** 1つのモデルで1回だけ走らせる。モデル側のエラーは ModelError にして投げ直す。 */
+async function runOnce(
   context: DesignContext,
   config: ServerConfig,
+  model: string,
 ): Promise<DesignResponseBody> {
   const collector = createCollector();
   const agent = new LlmAgent({
     name: "diy_design_agent",
     description: "DIY の設計候補を、実際に製作可能かを検証しながら組み立てる",
-    model: config.agentModel,
+    model,
     instruction: INSTRUCTION,
     tools: createTools(context, collector),
   });
@@ -112,11 +159,16 @@ export async function runDesignAgent(
   });
 
   let truncated = false;
-  for await (const _event of runner.runAsync({
+  for await (const event of runner.runAsync({
     userId: "web",
     sessionId: session.id,
     newMessage: { role: "user", parts: [{ text: buildUserMessage(context) }] },
   })) {
+    // モデル側の失敗をここで捕まえないと「候補を確定しなかった」と
+    // 区別が付かなくなり、原因の分からないフォールバックになる
+    if (event.errorCode) {
+      throw new ModelError(String(event.errorCode), event.errorMessage ?? "モデルが応答しませんでした");
+    }
     if (collector.trace.length >= config.maxToolCalls) {
       truncated = true;
       break;
@@ -139,12 +191,57 @@ export async function runDesignAgent(
 
   return {
     engine: "agent",
-    model: config.agentModel,
+    model,
     candidates: toCandidates(collector.submitted),
     notes,
     trace: collector.trace,
     evaluated: collector.evaluated,
   };
+}
+
+/**
+ * 一時的なモデルエラーは待って再試行し、それでも駄目なら別のモデルへ移る。
+ * Flash 系は時間帯によって 503 を返すため、これが無いと体感の成功率が落ちる。
+ */
+export async function runDesignAgent(
+  context: DesignContext,
+  config: ServerConfig,
+): Promise<DesignResponseBody> {
+  const models = [config.agentModel, ...config.fallbackModels];
+  const failures: { model: string; error: Error }[] = [];
+
+  for (const [index, model] of models.entries()) {
+    for (let attempt = 0; attempt <= config.retries; attempt += 1) {
+      try {
+        const result = await runOnce(context, config, model);
+        if (index > 0) {
+          result.notes.push(
+            `${config.agentModel} が使えなかったため ${model} で設計しました。`,
+          );
+        }
+        return result;
+      } catch (error) {
+        const kind = error instanceof ModelError ? error.kind : "fatal";
+        if (attempt === config.retries || kind !== "retry") {
+          failures.push({ model, error: error as Error });
+        }
+        if (kind !== "retry") break; // 待っても直らないなら次のモデルへ
+        if (attempt < config.retries) await sleep(600 * 2 ** attempt);
+      }
+    }
+  }
+
+  throw new AgentUnavailableError(describeFailure(failures), failures);
+}
+
+/** すべてのモデルで駄目だったとき。理由はユーザーに出せる文にしてある。 */
+export class AgentUnavailableError extends Error {
+  readonly failures: { model: string; error: Error }[];
+  constructor(message: string, failures: { model: string; error: Error }[]) {
+    super(message);
+    this.name = "AgentUnavailableError";
+    this.failures = failures;
+  }
 }
 
 /** API キーが無いとき、またはエージェントが失敗したときのフォールバック。 */

@@ -101,3 +101,21 @@ describe("ツール", () => {
     expect(collector.notes).toEqual(["注記"]);
   });
 });
+
+describe("提案できる範囲", () => {
+  it("骨格には角材、面材には板材しか選べない", () => {
+    const tools = createTools(context, createCollector());
+    const evaluate = tools.find((t) => t.name === "evaluate_design")!;
+    // 宣言を覗いてスキーマを固定する
+    const declaration = (evaluate as unknown as {
+      _getDeclaration: () => unknown;
+    })._getDeclaration() as {
+      parameters: { properties: Record<string, { enum?: string[] }> };
+    };
+    const schema = declaration.parameters.properties;
+    expect(schema.frameMaterialId.enum).toContain("lumber_2x4");
+    expect(schema.frameMaterialId.enum).not.toContain("board_ply12");
+    expect(schema.panelMaterialId.enum).toContain("board_ply12");
+    expect(schema.panelMaterialId.enum).not.toContain("lumber_1x4");
+  });
+});
