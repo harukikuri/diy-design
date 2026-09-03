@@ -473,3 +473,92 @@ select {
   text-align: center;
   font-size: 13px;
 }
+
+/* --------------------------------------------------------------------------
+ * 寸法入力
+ * -------------------------------------------------------------------------- */
+
+.dim {
+  margin-bottom: 14px;
+}
+
+.dim__row {
+  display: grid;
+  grid-template-columns: 1fr 92px;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 4px;
+}
+
+.dim__name {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--ink-2);
+}
+
+.dim__scale {
+  padding-top: 14px;
+}
+
+/* --------------------------------------------------------------------------
+ * 手持ち材料
+ * -------------------------------------------------------------------------- */
+
+.stock-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 66px 46px 26px;
+  gap: 6px;
+  align-items: center;
+  margin-bottom: 6px;
+}
+
+.stock-row .input,
+.stock-row .select {
+  padding: 5px 7px;
+  font-size: 12px;
+}
+
+.stock-row__remove {
+  padding: 0;
+  width: 26px;
+  height: 26px;
+  border: 1px solid transparent;
+  border-radius: var(--r-sm);
+  background: transparent;
+  color: var(--ink-3);
+  line-height: 1;
+  cursor: pointer;
+}
+
+.stock-row__remove:hover {
+  border-color: var(--danger);
+  color: var(--danger);
+}
+
+.stock-head {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 66px 46px 26px;
+  gap: 6px;
+  margin-bottom: 4px;
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+}
+
+.settings {
+  margin: 14px 0;
+  padding-top: 12px;
+  border-top: 1px solid var(--line);
+}
+
+.settings > summary {
+  font-size: 12px;
+  color: var(--ink-2);
+  cursor: pointer;
+}
+
+.settings[open] > summary {
+  margin-bottom: 10px;
+}
