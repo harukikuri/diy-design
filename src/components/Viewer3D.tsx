@@ -1,6 +1,7 @@
-import { Canvas } from "@react-three/fiber";
+import { Canvas, useThree } from "@react-three/fiber";
 import { Grid, OrbitControls } from "@react-three/drei";
-import { useMemo } from "react";
+import { useEffect, useMemo } from "react";
+import { Vector3 } from "three";
 import type { Part, PhysicalModel } from "../core/domain.ts";
 import { WALL_ANCHOR } from "../core/domain.ts";
 import { ROLE_COLOR } from "./partColors.ts";
@@ -13,6 +14,31 @@ import { ROLE_COLOR } from "./partColors.ts";
  */
 
 const MM = 0.001; // mm → m
+
+/** 組み立て済みの部材の色。新しく付ける部材だけが色を持つ (§15.2)。 */
+const ASSEMBLED = "#b6c0c1";
+
+/** 完成品の外形がキャンバスに収まる位置へカメラを置く。 */
+function FitCamera({ size: box }: { size: [number, number, number] }) {
+  const { camera, size } = useThree();
+  useEffect(() => {
+    const [w, h, d] = box;
+    const radius = Math.sqrt(w * w + h * h + d * d) / 2;
+    const perspective = camera as typeof camera & { fov: number; aspect: number };
+    const vFov = (perspective.fov * Math.PI) / 180;
+    const aspect = size.width / Math.max(size.height, 1);
+    const hFov = 2 * Math.atan(Math.tan(vFov / 2) * aspect);
+    const distance = (radius / Math.sin(Math.min(vFov, hFov) / 2)) * 1.08;
+    const direction = new Vector3(0.62, 0.42, 0.86).normalize();
+    camera.position.copy(direction.multiplyScalar(distance)).setY(h / 2 + distance * 0.35);
+    camera.near = distance / 100;
+    camera.far = distance * 12;
+    camera.lookAt(0, h / 2, 0);
+    perspective.aspect = aspect;
+    camera.updateProjectionMatrix();
+  }, [box, camera, size.width, size.height]);
+  return null;
+}
 
 interface Props {
   model: PhysicalModel;
@@ -56,11 +82,7 @@ function PartMesh({
   return (
     <mesh position={position} castShadow receiveShadow>
       <boxGeometry args={[part.size.x * MM, part.size.y * MM, part.size.z * MM]} />
-      <meshLambertMaterial
-        color={ROLE_COLOR[part.role]}
-        transparent={faded}
-        opacity={faded ? 0.14 : 1}
-      />
+      <meshLambertMaterial color={faded ? ASSEMBLED : ROLE_COLOR[part.role]} />
     </mesh>
   );
 }
@@ -81,8 +103,10 @@ export function Viewer3D({ model, visible, highlight, exploded = 0, showWall }: 
       shadows
       dpr={[1, 2]}
       camera={{ position: [span * 0.85, span * 0.7, span * 1.15], fov: 38 }}
+      key={`${bounds.x}x${bounds.y}x${bounds.z}`}
     >
       <color attach="background" args={["#e7ebea"]} />
+      <FitCamera size={[bounds.x * MM, bounds.y * MM, bounds.z * MM]} />
       <ambientLight intensity={1.5} />
       <directionalLight position={[3, 6, 4]} intensity={2.2} castShadow />
       <directionalLight position={[-4, 2, -3]} intensity={0.7} />

@@ -967,3 +967,169 @@ select {
   line-height: 1.5;
   color: var(--ink-2);
 }
+
+/* --------------------------------------------------------------------------
+ * 組立手順 (Visual Manual)
+ * -------------------------------------------------------------------------- */
+
+.steps {
+  display: flex;
+  gap: 8px;
+  padding: 12px 16px;
+  overflow-x: auto;
+  border-bottom: 1px solid var(--line);
+}
+
+.step-btn {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px 6px 8px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  color: var(--ink-2);
+  font-size: 12px;
+  cursor: pointer;
+  transition: border-color 0.12s, color 0.12s, background 0.12s;
+}
+
+.step-btn:hover {
+  border-color: var(--line-strong);
+}
+
+.step-btn__no {
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: var(--surface-sunk);
+  font-family: var(--mono);
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.step-btn[aria-current="true"] {
+  border-color: var(--teal);
+  background: var(--teal-wash);
+  color: var(--teal-deep);
+}
+
+.step-btn[aria-current="true"] .step-btn__no {
+  background: var(--teal);
+  color: #fff;
+}
+
+.manual {
+  display: grid;
+  grid-template-columns: minmax(0, 1.6fr) minmax(240px, 1fr);
+}
+
+@media (max-width: 820px) {
+  .manual {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.manual__stage {
+  height: min(58vh, 520px);
+  background: var(--surface-sunk);
+  border-right: 1px solid var(--line);
+}
+
+@media (max-width: 820px) {
+  .manual__stage {
+    border-right: none;
+    border-bottom: 1px solid var(--line);
+  }
+}
+
+.manual__aside {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  padding: 16px;
+}
+
+.manual__title {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.manual__title span {
+  font-family: var(--mono);
+  font-size: 12px;
+  color: var(--ink-3);
+}
+
+.manual__note {
+  color: var(--ink-2);
+  font-size: 12px;
+  line-height: 1.7;
+}
+
+.kit {
+  display: grid;
+  gap: 8px;
+}
+
+.kit__label {
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+}
+
+.kit__row {
+  display: grid;
+  grid-template-columns: 12px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+}
+
+.kit__dims {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--ink-3);
+}
+
+.kit__count {
+  font-family: var(--mono);
+  font-weight: 600;
+}
+
+.fastener {
+  display: grid;
+  grid-template-columns: 34px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+}
+
+.fastener__spec {
+  font-size: 12px;
+}
+
+.fastener__count {
+  font-family: var(--mono);
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.manual__nav {
+  display: flex;
+  gap: 8px;
+  margin-top: auto;
+  padding-top: 12px;
+  border-top: 1px solid var(--line);
+}
+
+.manual__nav .btn {
+  flex: 1;
+}

@@ -1,4 +1,4 @@
-import type { Connection, PhysicalModel } from "./domain.ts";
+import type { Connection, FastenerType, PhysicalModel } from "./domain.ts";
 import { WALL_ANCHOR } from "./domain.ts";
 import type { StructureCompiler } from "./structures/index.ts";
 
@@ -12,6 +12,7 @@ import type { StructureCompiler } from "./structures/index.ts";
  */
 
 export interface FastenerLine {
+  fastener: FastenerType;
   spec: string;
   count: number;
 }
@@ -31,13 +32,13 @@ export interface AssemblyStep {
 }
 
 function aggregateFasteners(connections: Connection[]): FastenerLine[] {
-  const map = new Map<string, number>();
+  const map = new Map<string, FastenerLine>();
   for (const c of connections) {
-    map.set(c.spec, (map.get(c.spec) ?? 0) + c.count);
+    const line = map.get(c.spec);
+    if (line) line.count += c.count;
+    else map.set(c.spec, { fastener: c.fastener, spec: c.spec, count: c.count });
   }
-  return [...map.entries()]
-    .map(([spec, count]) => ({ spec, count }))
-    .sort((a, b) => b.count - a.count);
+  return [...map.values()].sort((a, b) => b.count - a.count);
 }
 
 export function planAssembly(model: PhysicalModel, compiler: StructureCompiler): AssemblyStep[] {

@@ -4,17 +4,19 @@ import { Elevation } from "./Elevation.tsx";
 import type { View } from "./Elevation.tsx";
 import { VIEW_LABEL } from "./Elevation.tsx";
 import { ROLE_COLOR, ROLE_LABEL } from "./partColors.ts";
+import { AssemblyManual } from "./AssemblyManual.tsx";
 import { PartsTable } from "./PartsTable.tsx";
 import { CutPlanView } from "./CutPlanView.tsx";
 import { Viewer3D } from "./Viewer3D.tsx";
 
-type TabKey = "model" | "views" | "parts" | "cutplan";
+type TabKey = "model" | "views" | "parts" | "cutplan" | "assembly";
 
 const TABS: { key: TabKey; label: string }[] = [
   { key: "model", label: "3D" },
   { key: "views", label: "図面" },
   { key: "parts", label: "部品表" },
   { key: "cutplan", label: "木取り" },
+  { key: "assembly", label: "組立手順" },
 ];
 
 interface Props {
@@ -75,6 +77,8 @@ export function DesignDetail({ design }: Props) {
           </div>
         </>
       )}
+
+      {tab === "assembly" && <AssemblyManual design={design} />}
 
       {tab === "parts" && <PartsTable design={design} />}
 
