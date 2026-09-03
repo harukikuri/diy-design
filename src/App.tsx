@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import type { AgentTraceEntry } from "./api/types.ts";
 import type { DesignRun } from "./lib/runDesign.ts";
 import { runDesign } from "./lib/runDesign.ts";
@@ -6,9 +6,7 @@ import type { FormState } from "./components/InputForm.tsx";
 import { InputForm, initialForm } from "./components/InputForm.tsx";
 import { AgentTrace } from "./components/AgentTrace.tsx";
 import { CandidateGrid } from "./components/CandidateGrid.tsx";
-import { EmptyStage } from "./components/EmptyStage.tsx";
 import { DesignDetail } from "./components/DesignDetail.tsx";
-import { Scale, STANDARD_SPAN } from "./components/Scale.tsx";
 
 export default function App() {
   const [form, setForm] = useState<FormState>(initialForm);
@@ -19,8 +17,20 @@ export default function App() {
   const [error, setError] = useState<string | null>(null);
 
   const selected = run?.designs.find((d) => d.candidate.id === selectedId) ?? null;
+  const dialog = useRef<HTMLDialogElement>(null);
+
+  const openForm = () => {
+    dialog.current?.showModal();
+    // showModal は最初の可視要素へフォーカスするが、それは段階ナビのボタン。
+    // 入力できる場所へ移す。
+    dialog.current
+      ?.querySelector<HTMLElement>(".wizard__body input, .wizard__body select")
+      ?.focus();
+  };
+  const closeForm = () => dialog.current?.close();
 
   const design = async () => {
+    closeForm();
     setBusy(true);
     setError(null);
     setLiveTrace([]);
@@ -60,17 +70,32 @@ export default function App() {
           <p className="masthead__tagline">
             寸法と手持ちの材料を、部材・木取り・組立手順へコンパイルする
           </p>
-        </div>
-        <div className="masthead__scale">
-          <Scale span={STANDARD_SPAN} labels />
+          <button
+            type="button"
+            className="btn btn--primary masthead__action"
+            onClick={openForm}
+            disabled={busy}
+          >
+            {busy ? "計算中…" : "設計する"}
+          </button>
         </div>
       </header>
 
-      <main className="layout">
-        <div className="rail">
+      <dialog className="sheet" ref={dialog} onClose={closeForm}>
+        <div className="sheet__body">
           <InputForm value={form} onChange={setForm} onSubmit={design} busy={busy} />
+          <button
+            type="button"
+            className="sheet__close"
+            onClick={closeForm}
+            aria-label="閉じる"
+          >
+            ×
+          </button>
         </div>
+      </dialog>
 
+      <main className="layout">
         <div className="stage">
           {error && (
             <div className="notice notice--error">
@@ -81,9 +106,7 @@ export default function App() {
 
           {busy ? (
             <AgentTrace trace={liveTrace} live />
-          ) : run === null ? (
-            <EmptyStage />
-          ) : (
+          ) : run === null ? null : (
             <>
               <AgentTrace
                 trace={run.trace}
