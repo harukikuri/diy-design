@@ -1,5 +1,5 @@
 import { InMemoryRunner, LlmAgent } from "@google/adk";
-import type { AgentTraceEntry, DesignResponseBody } from "../../src/api/types.ts";
+import type { AgentTraceEntry, AgentUsage, DesignResponseBody } from "../../src/api/types.ts";
 import type { DesignCandidate } from "../../src/core/domain.ts";
 import { ruleBasedDesignEngine } from "../../src/core/designEngine.ts";
 import { getStructure } from "../../src/core/structures/index.ts";
@@ -70,17 +70,26 @@ const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 const INSTRUCTION = `あなたは DIY の設計者です。ユーザーの要望・仕上がり寸法・手持ちの材料から、実際に製作可能な設計候補を 2〜3 件まとめます。
 
+## 進め方
+
+1. list_structures と list_materials を、同じターンでまとめて呼ぶ。
+2. 適用寸法に収まる構造それぞれについて、compare_options を **同じターンにまとめて** 呼ぶ (構造が3つなら3回の並列呼び出し)。段数と板材の全組み合わせが、歩留まり・費用・指摘件数つきの表で返る。
+3. 表を読んで、構造ごとに最も良い行を1つ選ぶ。判断の順序は次のとおり。
+   - errors が 0 であること (必須)。
+   - ユーザーの要望への合致。重い物 (本・工具など) を載せるなら板厚の薄い板材を選ばない。段数は要望と使い方から決める。棚は段数が収納量そのものなので、安いからといって不必要に段を減らさない。
+   - そのうえで歩留まりが高く、費用の安い行を選ぶ。
+4. 選んだ案の指摘内容を確認したいときだけ evaluate_design を呼ぶ (warning の中身を summary に書くために必要なら)。表で errors が 0 と分かっている案を、確認のためだけに再評価しない。
+5. submit_designs を一度だけ呼んで確定する。
+
 ## 守ること
 
-1. 最初に list_structures と list_materials を必ず呼び、作れる構造と使える材料を確認する。
-2. 候補は「色違い」ではなく構造そのものが異なるものを選ぶ。同じ構造で材料だけ違う案を複数出さない。
-3. どの案も submit_designs に渡す前に evaluate_design で検証する。検証していない案を提出しない。
-4. evaluate_design の issues に level が "error" のものが含まれる案は作れない。段数・材料・構造のいずれかを変えて再評価する。同じ案をそのまま出し直さない。
-5. "warning" は作れるが注意が要る状態。採用してよいが、その内容を summary で必ず触れる。
-6. 手持ちの材料があるときは、それを使い切れる案を優先して検討する。
-7. 歩留まりが著しく低い (0.5 未満) 案は、材料や段数を変えて改善できないか一度は試す。
-8. evaluate_design は同じターンでまとめて複数回呼んでよい。構造の異なる案は最初にまとめて評価し、往復を減らすこと。
-9. 十分な案が揃ったら submit_designs を一度だけ呼んで終える。
+- 段数や材料の総当たりを自分で繰り返さない。それは compare_options の仕事であり、1回の呼び出しで済む。
+- evaluate_design の呼び出しは全体で 6 回まで。上限に達すると評価を拒否される。
+- compare_options か evaluate_design を通していない案は submit_designs が受け付けない。
+- 候補は「色違い」ではなく構造そのものが異なるものを選ぶ。同じ構造で材料だけ違う案を複数出さない。
+- 検証していない案を submit_designs に渡さない。
+- "warning" は作れるが注意が要る状態。採用してよいが、その内容を summary で必ず触れる。
+- 手持ちの材料があるときは、それを使い切れる案を優先する。
 
 ## できないこと
 
@@ -88,7 +97,7 @@ const INSTRUCTION = `あなたは DIY の設計者です。ユーザーの要望
 
 ## 出力
 
-submit_designs の title は 15 文字以内の日本語、summary は 80 文字以内の日本語で、その案を選ぶ理由と注意点を書きます。fit はユーザーの要望への合致度であり、構造の頑丈さではありません。`;
+submit_designs の title は 15 文字以内の日本語で、構造の特徴が分かる名前にします。段数や寸法の数字は title に入れないでください (画面には実際の値が別に出るため、食い違うと誤解を生みます)。summary は 80 文字以内の日本語で、その案を選ぶ理由と注意点を書きます。fit はユーザーの要望への合致度であり、構造の頑丈さではありません。`;
 
 function buildUserMessage(context: DesignContext): string {
   const { intent, dimensions, ownedStock, kerf } = context;
@@ -149,7 +158,7 @@ async function runOnce(
     description: "DIY の設計候補を、実際に製作可能かを検証しながら組み立てる",
     model,
     instruction: INSTRUCTION,
-    tools: createTools(context, collector),
+    tools: createTools(context, collector, config.maxEvaluations),
   });
 
   const runner = new InMemoryRunner({ agent, appName: APP_NAME });
@@ -157,6 +166,13 @@ async function runOnce(
     appName: APP_NAME,
     userId: "web",
   });
+
+  const usage: AgentUsage = {
+    modelCalls: 0,
+    inputTokens: 0,
+    outputTokens: 0,
+    totalTokens: 0,
+  };
 
   let truncated = false;
   for await (const event of runner.runAsync({
@@ -166,6 +182,14 @@ async function runOnce(
   })) {
     // モデル側の失敗をここで捕まえないと「候補を確定しなかった」と
     // 区別が付かなくなり、原因の分からないフォールバックになる
+    // モデル応答ごとにトークンを積む (思考トークンは出力側に含めて数える)
+    const meta = event.usageMetadata;
+    if (meta) {
+      usage.modelCalls += 1;
+      usage.inputTokens += meta.promptTokenCount ?? 0;
+      usage.outputTokens += (meta.candidatesTokenCount ?? 0) + (meta.thoughtsTokenCount ?? 0);
+      usage.totalTokens += meta.totalTokenCount ?? 0;
+    }
     if (event.errorCode) {
       throw new ModelError(String(event.errorCode), event.errorMessage ?? "モデルが応答しませんでした");
     }
@@ -196,6 +220,7 @@ async function runOnce(
     notes,
     trace: collector.trace,
     evaluated: collector.evaluated,
+    usage,
   };
 }
 

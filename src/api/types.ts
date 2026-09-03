@@ -33,6 +33,14 @@ export interface AgentTraceEntry {
   issues?: { level: string; message: string }[];
 }
 
+/** 1リクエストで消費したトークン。費用の見積もりに使う。 */
+export interface AgentUsage {
+  modelCalls: number;
+  inputTokens: number;
+  outputTokens: number;
+  totalTokens: number;
+}
+
 export interface DesignResponseBody {
   engine: "agent" | "rule-based";
   model?: string;
@@ -41,6 +49,7 @@ export interface DesignResponseBody {
   trace: AgentTraceEntry[];
   /** エージェントが評価した案の総数 (採用されなかったものを含む) */
   evaluated: number;
+  usage?: AgentUsage;
 }
 
 export interface RenderRequestBody {
