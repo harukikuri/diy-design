@@ -63,6 +63,14 @@ export async function renderCompletionImage(
   config: ServerConfig,
   input: RenderInput,
 ): Promise<RenderResponseBody> {
+  // 接続先が無いと分かっているなら、通信を試みずにここで失敗させる。
+  // (ルート側でも 503 を返すが、他の呼び出し元から来ても同じ挙動になるようにする)
+  if (config.backend === "none") {
+    throw new Error(
+      "完成イメージの生成には Vertex AI (GOOGLE_CLOUD_PROJECT) か API キー (GEMINI_API_KEY) の設定が必要です。",
+    );
+  }
+
   const key = cacheKey(config.imageModel, input);
   const hit = cache.get(key);
   if (hit) return hit;
