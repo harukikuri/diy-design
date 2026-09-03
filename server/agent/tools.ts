@@ -316,8 +316,14 @@ export function createTools(
         .max(3),
       notes: z
         .array(z.string())
+        .max(2)
         .optional()
-        .describe("ユーザーに伝える前提や制限 (対応外の要望など)"),
+        .describe(
+          "検証では分からないことだけを書く。たとえば、要望が対応外の構造だった、" +
+          "手持ちの材料が足りない、など。" +
+          "転倒・たわみ・耐荷重・寸法の警告は検証側が候補ごとに出しているので、" +
+          "ここで言い直さない。書くことが無ければ空でよい。",
+        ),
     }),
     execute: (input) => {
       const parsed = input as { designs: SubmittedDesign[]; notes?: string[] };
