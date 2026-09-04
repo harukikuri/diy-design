@@ -27,9 +27,6 @@ export function CutPlanView({ plan }: Props) {
           <span>
             切り代 <b>{plan.kerf}mm</b>
           </span>
-          <span>
-            アルゴリズム <b>{plan.algorithm === "best_fit_decreasing" ? "BFD" : "FFD"}</b>
-          </span>
         </div>
 
         {plan.unplaced.length > 0 && (

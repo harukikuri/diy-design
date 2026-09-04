@@ -78,49 +78,65 @@ interface Props {
 const UP = new Vector3(0, 1, 0);
 
 /**
- * 留める位置と向きの印。
+ * ねじの入る位置と向き。
  *
- * 位置だけの点にすると、板と板の隙間に何かが浮いているようにしか見えず、
- * どちらの面から打つのかが伝わらない。頭を面の上に置き、打ち込む向きへ軸を
- * 伸ばすことで「この面から、この向きに入れる」を図で示す。
- * 実寸のねじは小さすぎて見えないため、視認できる大きさに誇張している。
+ * 材の中へ向かう部分は木に隠れて見えないので、ねじ自体は材の外に浮かせて描き、
+ * 先端を入り口へ向ける。IKEA の説明書と同じ考え方で、木を透かさずに
+ * 「この向きに、ここへ入れる」が読める。表面には入り口を小さな円で示す。
+ * 実寸のねじは 1800mm の棚に対して小さすぎるため、寸法は誇張してある。
  */
 function FastenerMark({
   at,
   drive,
-  scale,
+  size,
 }: {
   at: [number, number, number];
   drive: [number, number, number];
-  scale: number;
+  size: number;
 }) {
-  const { position, quaternion, length } = useMemo(() => {
+  const g = useMemo(() => {
     const dir = new Vector3(...drive).normalize();
-    const len = scale * 7;
+    const entry = new Vector3(...at);
+    const back = (d: number) => entry.clone().addScaledVector(dir, -d);
+
+    const tip = size * 0.45;
+    const shank = size;
+    const headH = size * 0.16;
+    const r = size * 0.075;
+
     return {
-      // 円柱は中心基準なので、頭から半分ぶん進めた位置に置く
-      position: new Vector3(...at).addScaledVector(dir, len / 2),
       quaternion: new Quaternion().setFromUnitVectors(UP, dir),
-      length: len,
+      tipPos: back(tip / 2),
+      tipArgs: [r, tip, 12] as [number, number, number],
+      shankPos: back(tip + shank / 2),
+      shankArgs: [r, r, shank, 12] as [number, number, number, number],
+      headPos: back(tip + shank + headH / 2),
+      headArgs: [size * 0.19, size * 0.1, headH, 14] as [number, number, number, number],
+      entry,
+      entryArgs: [size * 0.17, size * 0.17, size * 0.012, 16] as [number, number, number, number],
     };
-  }, [at, drive, scale]);
+  }, [at, drive, size]);
 
   return (
     <group>
-      {/* 軸: 打ち込む向き */}
-      <mesh position={position} quaternion={quaternion}>
-        <cylinderGeometry args={[scale * 0.45, scale * 0.3, length, 10]} />
-        <meshBasicMaterial color={FASTENER} />
+      {/* 先端。頂点が入り口を向く */}
+      <mesh position={g.tipPos} quaternion={g.quaternion}>
+        <coneGeometry args={g.tipArgs} />
+        <meshLambertMaterial color={FASTENER} />
       </mesh>
-      {/* 頭: 作業する面の側 */}
-      <mesh position={at}>
-        <sphereGeometry args={[scale, 14, 14]} />
-        <meshBasicMaterial color={FASTENER} />
+      <mesh position={g.shankPos} quaternion={g.quaternion}>
+        <cylinderGeometry args={g.shankArgs} />
+        <meshLambertMaterial color={FASTENER} />
       </mesh>
-      {/* 材の裏に回っても位置が分かるよう、薄い輪を手前に重ねる */}
-      <mesh position={at} renderOrder={2}>
-        <sphereGeometry args={[scale * 1.7, 14, 14]} />
-        <meshBasicMaterial color={FASTENER} transparent opacity={0.2} depthTest={false} />
+      {/* 頭は皿状に広げて、ねじだと分かるようにする */}
+      <mesh position={g.headPos} quaternion={g.quaternion}>
+        <cylinderGeometry args={g.headArgs} />
+        <meshLambertMaterial color={FASTENER} />
+      </mesh>
+      {/* 入り口。材に埋もれても位置が分かるよう手前に描く */}
+      <mesh position={g.entry} quaternion={g.quaternion} renderOrder={2}>
+        <cylinderGeometry args={g.entryArgs} />
+        <meshBasicMaterial color={FASTENER} transparent opacity={0.85} depthTest={false} />
       </mesh>
     </group>
   );
@@ -184,8 +200,8 @@ export function Viewer3D({
   const marks: Connection[] = fastenings
     ? model.connections.filter((c) => fastenings.includes(c.id))
     : [];
-  // 完成品の大きさに対して見える程度の印にする
-  const markScale = Math.max(0.008, span * 0.012);
+  // 完成品の大きさに対して、ねじと分かる程度の大きさにする
+  const markSize = Math.max(0.05, span * 0.055);
 
   return (
     <Canvas
@@ -219,7 +235,7 @@ export function Viewer3D({
           c.points.map((at, i) => (
             <FastenerMark
               key={`${c.id}_${i}`}
-              scale={markScale}
+              size={markSize}
               at={[at.x * MM - center[0], at.y * MM, at.z * MM - center[2]]}
               drive={[c.drive.x, c.drive.y, c.drive.z]}
             />

@@ -140,7 +140,6 @@ export default function App() {
             <section className="section" style={{ marginTop: 12 }}>
               <div className="section-head">
                 <h2>設計候補</h2>
-                <span className="eyebrow num">{run.designs.length} candidates</span>
               </div>
               {run.designs.length === 0 ? (
                 <div className="panel">

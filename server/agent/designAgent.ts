@@ -182,8 +182,6 @@ async function runOnce(
     sessionId: session.id,
     newMessage: { role: "user", parts: [{ text: buildUserMessage(context) }] },
   })) {
-    // モデル側の失敗をここで捕まえないと「候補を確定しなかった」と
-    // 区別が付かなくなり、原因の分からないフォールバックになる
     // モデル応答ごとにトークンを積む (思考トークンは出力側に含めて数える)
     const meta = event.usageMetadata;
     if (meta) {
@@ -192,6 +190,8 @@ async function runOnce(
       usage.outputTokens += (meta.candidatesTokenCount ?? 0) + (meta.thoughtsTokenCount ?? 0);
       usage.totalTokens += meta.totalTokenCount ?? 0;
     }
+    // モデル側の失敗をここで捕まえないと「候補を確定しなかった」と
+    // 区別が付かなくなり、原因の分からないフォールバックになる
     if (event.errorCode) {
       throw new ModelError(String(event.errorCode), event.errorMessage ?? "モデルが応答しませんでした");
     }
@@ -238,16 +238,13 @@ export async function runDesignAgent(
   const models = [config.agentModel, ...config.fallbackModels];
   const failures: { model: string; error: Error }[] = [];
 
-  for (const [index, model] of models.entries()) {
+  for (const model of models) {
     for (let attempt = 0; attempt <= config.retries; attempt += 1) {
       try {
-        const result = await runOnce(context, config, model, onTrace);
-        if (index > 0) {
-          result.notes.push(
-            `${config.agentModel} が使えなかったため ${model} で設計しました。`,
-          );
-        }
-        return result;
+        // 予備のモデルに切り替わったことは注記にしない。
+        // 実際に使ったモデル名は検討過程の見出しに出ており、
+        // 作る人の判断には関わらない運用上の事情でしかない。
+        return await runOnce(context, config, model, onTrace);
       } catch (error) {
         const kind = error instanceof ModelError ? error.kind : "fatal";
         if (attempt === config.retries || kind !== "retry") {
